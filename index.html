@@ -17,6 +17,9 @@
             overflow: hidden;
         }
         #class-select {
+            position: absolute; /* Pour le positionner indépendamment */
+            left: 50%;
+            transform: translateX(-50%);
             margin-bottom: 20px;
             font-size: 16px;
             position: absolute;
@@ -76,19 +79,104 @@
             text-align: center;
             margin-top: 20px;
         }
+
+        .top-buttons {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+
+        #toggle-list {
+            position: absolute;
+            top: 20px;
+            left: 20px; /* Position fixe à gauche */
+            font-size: 16px;
+            background-color: #171717;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 30px;
+            appearance: none;
+            width: 200px;
+            text-align: center;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        #skills-list {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            background-color: #171717;
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 70vh;
+            overflow-y: auto;
+            display: none;
+            width: 400px;
+        }
+
+        #skills-list h3 {
+            margin-top: 0;
+            color: #fff;
+        }
+
+        #skills-list ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #skills-list li {
+            margin: 10px 0;
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        /* Style pour la scrollbar */
+        #skills-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #skills-list::-webkit-scrollbar-track {
+            background: #333;
+            border-radius: 4px;
+        }
+
+        #skills-list::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+
+        #skills-list::-webkit-scrollbar-thumb:hover {
+            background: #666;
+        }
     </style>
 </head>
 <body>
-    <select id="class-select">
-        <option value="" disabled selected>Sélectionnez une classe</option>
-        <option value="class1">6ème 1</option>
-        <option value="class2">6ème 5</option>
-        <option value="class3">6ème 7</option>
-        <option value="class4">4ème 7</option>
-    </select>
+    <div class="top-buttons">
+        <button id="toggle-list">Afficher les savoir-faire</button>
+        <select id="class-select">
+            <option value="" disabled selected>Sélectionnez une classe</option>
+            <option value="class1">6ème 1</option>
+            <option value="class2">6ème 5</option>
+            <option value="class3">6ème 7</option>
+            <option value="class4">4ème 7</option>
+        </select>
+    </div>
+    
+    <div id="skills-list">
+        <h3>Liste des savoir-faire</h3>
+        <ul></ul>
+    </div>
+
     <div id="display"></div>
     <div id="number-display"></div>
-    <div id="title-display"></div> <!-- For showing the title -->
+    <div id="title-display"></div>
 
     <script>
         const nomsClasse6e1 = ["Lorenzo", "Naelle", "Ismael", "Lina", "Inès", "Evan", "Hugo", "Juliette", "Léna", "Louna", "Samuel", "Baptiste", "Lucas", "Maéva", "Suzanne", "Raphaël", "Lola", "Nathan", "Gabriel", "Arthur", "Aymeric", "Clément", "Adèle", "Ambre", "Lily", "Océane", "Louis"];
@@ -141,7 +229,6 @@
             72: "Identifier si un nombre est multiple/diviseur/divisible",
             73: "Identifier si un nombre est divisible par … avec les critères de divisibilité",
             74: "Convertir des durées",
-            75: "Effectuer une division décimale",
         };
 
         const titles4e = {
@@ -183,22 +270,21 @@
             "55b": "Développer une expression avec la double distributivité",
             56: "Réduire une expression littérale",
             57: "Factoriser une expression littérale",
-            58: "Montrer que deux expressions littérales sont égales",
-            "59a": "Traduire un programme de calcul en une expression littérale",
-            "59b": "Inverser un programme de calcul",
         };
 
         const display = document.getElementById("display");
         const numberDisplay = document.getElementById("number-display");
         const classSelect = document.getElementById("class-select");
-        const titleDisplay = document.getElementById("title-display"); // For showing title
+        const titleDisplay = document.getElementById("title-display");
+        const skillsList = document.getElementById("skills-list");
+        const toggleListButton = document.getElementById("toggle-list");
         let interval;
         let nameDrawn = false;
         let numberDrawn = false;
         let isDrawing = false;
 
         const numbers6e = [11, 12, "13a", "13b", 14, 15, 16, "17a", "17b", 18, 19, 21, 22, 23, 24, 25, 26, 31, 32, 33, 34, 41, 42, 43, 44, 45, 46, 51, 52, 53, 54, 55, 56, 57, 58, 61, 62, 63, 64, 71, 72, 73, 74];
-        const numbers4e = [11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 24, 25, 26, 27, 31, 32, 33, 34, 35, 36, 37, 38, 41, 42, 43, 44, 45, 46, 47, 51, 52, 53, 54, "55a", "55b", 56, 57, 58, "59a", "59b"];
+        const numbers4e = [51, 52, 53, 54, "55a", "55b", 56, 57];
 
         function displayRandomName() {
             const selectedClass = classSelect.value;
@@ -285,12 +371,36 @@
             clearTimeout(interval);
             display.innerText = '';
             numberDisplay.innerText = '';
-            titleDisplay.innerText = ''; // Clear title
+            titleDisplay.innerText = '';
             nameDrawn = false;
             numberDrawn = false;
             isDrawing = false;
         }
 
+        function updateSkillsList() {
+            const selectedClass = classSelect.value;
+            const skillsListUl = skillsList.querySelector('ul');
+            skillsListUl.innerHTML = '';
+
+            let titles = {};
+            let numbers = [];
+            if (selectedClass === "class1" || selectedClass === "class2" || selectedClass === "class3") {
+                titles = titles6e;
+                numbers = numbers6e;
+            } else if (selectedClass === "class4") {
+                titles = titles4e;
+                numbers = numbers4e;
+            }
+
+            // Utiliser l'ordre des tableaux numbers pour afficher les titres
+            numbers.forEach(number => {
+                const li = document.createElement('li');
+                li.textContent = `${number} : ${titles[number]}`;
+                skillsListUl.appendChild(li);
+            });
+        }
+
+        // Event Listeners
         document.addEventListener("keydown", (event) => {
             if (event.code === "Space" && classSelect.value && !isDrawing) {
                 event.preventDefault();
@@ -307,10 +417,16 @@
         });
 
         classSelect.addEventListener("change", () => {
-            resetDisplay(); // Clear both displays when class changes
+            resetDisplay();
+            updateSkillsList();
         });
 
-        // Add click event to show the title for the number
+        toggleListButton.addEventListener("click", () => {
+            const isHidden = skillsList.style.display === "none" || skillsList.style.display === "";
+            skillsList.style.display = isHidden ? "block" : "none";
+            toggleListButton.textContent = isHidden ? "Cacher les savoir-faire" : "Afficher les savoir-faire";
+        });
+
         numberDisplay.addEventListener("click", () => {
             const number = numberDisplay.innerText.trim();
             const selectedClass = classSelect.value;
