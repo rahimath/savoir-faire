@@ -233,7 +233,12 @@
             81: "Identifier un axe de symétrie",
             82: "Identifier si deux figures sont symétriques",
             83: "Tracer le symétrique d’une figure avec quadrillage",
-            84: "Tracer le symétrique d’une figure sans quadrillage"
+            84: "Tracer le symétrique d’une figure sans quadrillage",
+            91: "Représenter des partages avec des fractions",
+            92: "Repérer et placer des fractions sur une demi-droite graduée",
+            93: "Interpréter une fraction de plusieurs façons",
+            94: "Simplifier une fraction",
+            95: "Prendre une fraction d’une quantité"
         };
 
         const titles4e = {
@@ -284,7 +289,9 @@
             64: "Multiplier deux fractions",
             65: "Donner l’inverse d’une fraction",
             66: "Diviser deux fractions",
-            71: "Tester si un nombre est solution d’une équation"
+            71: "Tester si un nombre est solution d’une équation",
+            72: "Résoudre algébriquement une équation",
+            73: "Mettre un problème en équation"
         };
 
         const display = document.getElementById("display");
@@ -298,8 +305,8 @@
         let numberDrawn = false;
         let isDrawing = false;
 
-        const numbers6e = [11, 12, "13a", "13b", 14, 15, 16, "17a", "17b", 18, 19, 21, 22, 23, 24, 25, 26, 31, 32, 33, 34, 41, 42, 43, 44, 45, 46, 51, 52, 53, 54, 55, 56, 57, 58, 61, 62, 63, 64, 71, 72, 73, 74, 75, 81, 82, 83, 84];
-        const numbers4e = [11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 24, 25, 26, 27, 31, 32, 33, 34, 35, 36, 37, 38, 41, 42, 43, 44, 45, 46, 47, 51, 52, 53, 54, "55a", "55b", 56, 57, 58, "59a", "59b", 61, 62, 63, 64, 65, 66, 71];
+        const numbers6e = [11, 12, "13a", "13b", 14, 15, 16, "17a", "17b", 18, 19, 21, 22, 23, 24, 25, 26, 31, 32, 33, 34, 41, 42, 43, 44, 45, 46, 51, 52, 53, 54, 55, 56, 57, 58, 61, 62, 63, 64, 71, 72, 73, 74, 75, 81, 82, 83, 84, 91, 92, 93, 94, 95];
+        const numbers4e = [11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 24, 25, 26, 27, 31, 32, 33, 34, 35, 36, 37, 38, 41, 42, 43, 44, 45, 46, 47, 51, 52, 53, 54, "55a", "55b", 56, 57, 58, "59a", "59b", 61, 62, 63, 64, 65, 66, 71, 72, 73];
 
         function displayRandomName() {
             const selectedClass = classSelect.value;
