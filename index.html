@@ -145,7 +145,7 @@ body::before { content: ''; position: fixed; top: 0; right: 0; width: 100%; heig
   <span></span><span></span><span></span>
 </button>
 
-<button id="random-btn" onclick="randomSkill()">Savoir-faire aléatoire</button>
+<button id="random-btn" onclick="randomSkill()">Aléatoire</button>
 
 <main id="main">
   <div id="welcome">
@@ -775,45 +775,100 @@ G[91] = () => {
 G[92] = () => {
   const type=pick(['programme','fonction_n','situation']);
   if(type==='programme') {
-    const c1=rand(2,6), c2=rand(1,9), c3=rand(1,8);
-    const subtype=pick(['multAdd','multSou','addMult']);
-    let steps, expr, detail;
-    if(subtype==='multAdd'){
-      steps=`- Choisir un nombre\n- Multiplier par $${c1}$\n- Ajouter $${c2}$`;
-      expr=`${c1}x + ${c2}`; detail=`$x \\to ${c1}x \\to ${c1}x + ${c2}$`;
-    } else if(subtype==='multSou'){
-      steps=`- Choisir un nombre\n- Multiplier par $${c1}$\n- Soustraire $${c2}$`;
-      expr=`${c1}x - ${c2}`; detail=`$x \\to ${c1}x \\to ${c1}x - ${c2}$`;
-    } else {
-      steps=`- Choisir un nombre\n- Ajouter $${c2}$\n- Multiplier par $${c1}$`;
-      expr=`(x + ${c2}) \\times ${c1}`; detail=`$x \\to x+${c2} \\to (x+${c2})\\times${c1}$`;
-    }
+    const c1=rand(2,6), c2=rand(1,9), c3=rand(2,6), c4=rand(1,8);
+    // Opérations de base — une de chaque est obligatoire
+    const opAdd = pick([
+      { desc:`Ajouter $${c2}$`,             fn: e => `${e} + ${c2}`  },
+      { desc:`Ajouter le nombre de départ`, fn: e => `${e} + x`      },
+    ]);
+    const opSou = pick([
+      { desc:`Soustraire $${c4}$`,              fn: e => `${e} - ${c4}`  },
+      { desc:`Soustraire le nombre de départ`,  fn: e => `${e} - x`      },
+    ]);
+    const opMul = pick([
+      { desc:`Multiplier par $${c1}$`,              fn: e => `${c1}(${e})`           },
+      { desc:`Multiplier par le nombre de départ`,  fn: e => `(${e}) \\times x`      },
+    ]);
+    // Étape bonus optionnelle (4e étape)
+    const opBonus = pick([
+      { desc:`Ajouter $${c3}$`,        fn: e => `${e} + ${c3}`  },
+      { desc:`Soustraire $${c2}$`,     fn: e => `${e} - ${c2}`  },
+      { desc:`Multiplier par $${c3}$`, fn: e => `${c3}(${e})`   },
+    ]);
+    // Mélanger les 3 obligatoires + éventuellement la bonus
+    const mandatory = shuffle([opAdd, opSou, opMul]);
+    const ops = pick([true,false]) ? [...mandatory, opBonus] : mandatory;
+    const stepDescs = ops.map(o=>`- ${o.desc}`).join('\n');
+    // Calculer l'expression finale
+    let expr = 'x';
+    ops.forEach(o => { expr = o.fn(expr); });
+    // Détail étape par étape pour la correction
+    const detailLines = ops.map((o,i) => {
+      let e = 'x';
+      ops.slice(0,i+1).forEach(op => { e = op.fn(e); });
+      return `- ${o.desc} : $${e}$`;
+    }).join('\n');
     return {
-      question:`**Programme de calcul :**\n\n${steps}\n\nÉcris l'expression littérale obtenue si on choisit $x$ comme nombre de départ.`,
-      correction:`**Cheminement :** ${detail}\n\nL'expression est : $$${expr}$$`
-    };
-  } else if(type==='fonction_n') {
-    const items=shuffle([
-      {text:'le double de $n$', expr:'2n'},
-      {text:'le triple de $n$', expr:'3n'},
-      {text:`$n$ augmenté de $${rand(2,9)}$`, get expr(){return `n + ${this.text.match(/\d+/)[0]}`}},
-      {text:`la moitié de $n$`, expr:'\\frac{n}{2}'},
-      {text:`le nombre entier qui suit $n$`, expr:'n+1'},
-      {text:`la différence de $n$ et de $${rand(2,8)}$`, get expr(){return `n - ${this.text.match(/\d+/)[0]}`}},
-    ]).slice(0,rand(3,4));
-    const lines=items.map((it,i)=>`${String.fromCharCode(97+i)}. ${it.text}`).join('\n');
-    return {
-      question:`Soit $n$ un nombre entier. Exprime en fonction de $n$ :\n\n${lines}`,
-      correction:items.map((it,i)=>`${String.fromCharCode(97+i)}. ${it.text} : $${it.expr}$`).join('\n')
-    };
-  } else {
-    const letter=pick(['a','p']);
-    const age1=rand(2,5), age2=rand(1,4), mult=rand(2,3);
-    return {
-      question:`On note $${letter}$ l'âge de Sarah aujourd'hui.\n\nComment noter :\n\na. son âge dans $${age1}$ ans ?\nb. son âge il y a $${age2}$ ans ?\nc. le ${mult==='2'?'double':'triple'} de son âge ?`,
-      correction:`a. dans $${age1}$ ans : $${letter} + ${age1}$\nb. il y a $${age2}$ ans : $${letter} - ${age2}$\nc. le ${mult===2?'double':'triple'} : $${mult}${letter}$`
+      question:`**Voici un programme de calcul :**\n\n- Choisir un nombre\n${stepDescs}\n\nÉcris l'expression littérale obtenue si on choisit $x$ comme nombre de départ.`,
+      correction:`On applique chaque étape depuis $x$ :\n\n- Départ : $x$\n${detailLines}\n\nL'expression est : $$${expr}$$`
     };
   }
+
+  if(type==='fonction_n') {
+    const item = pick([
+      {text:'le double de $n$',                                    expr:'2n'},
+      {text:'le triple de $n$',                                    expr:'3n'},
+      {text:`$n$ augmenté de $${rand(2,9)}$`,                      expr:`n + ${rand(2,9)}`},
+      {text:`$n$ diminué de $${rand(2,9)}$`,                       expr:`n - ${rand(2,9)}`},
+      {text:`la moitié de $n$`,                                    expr:'\\dfrac{n}{2}'},
+      {text:`le nombre entier qui suit $n$`,                       expr:'n+1'},
+      {text:`le nombre entier qui précède $n$`,                    expr:'n-1'},
+      {text:`la différence de $n$ et de $${rand(2,8)}$`,           expr:`n - ${rand(2,8)}`},
+      {text:`le triple de la somme de $${rand(2,5)}$ et de $n$`,   expr:`3(n + ${rand(2,5)})`},
+    ]);
+    return {
+      question:`Soit $n$ un nombre entier. Écris l'expression littérale correspondant à : **${item.text}**.`,
+      correction:`${item.text} s'écrit : $$${item.expr}$$`
+    };
+  }
+  
+  // situation
+  const letter = pick(['a','p','n']);
+  const ctx = pick([
+    {
+      desc:`On note $${letter}$ l'âge de Lucas aujourd'hui.`,
+      items:[
+        {q:`son âge dans $${rand(2,5)}$ ans`,              get expr(){return `${letter} + ${this.q.match(/\d+/)[0]}`}},
+        {q:`son âge il y a $${rand(1,4)}$ ans`,            get expr(){return `${letter} - ${this.q.match(/\d+/)[0]}`}},
+        {q:`le double de son âge`,                         expr:`2${letter}`},
+        {q:`le triple de son âge`,                         expr:`3${letter}`},
+        {q:`la moitié de son âge`,                         expr:`\\dfrac{${letter}}{2}`},
+      ]
+    },
+    {
+      desc:`On note $${letter}$ le prix en euros d'un article.`,
+      items:[
+        {q:`le prix de $${rand(2,5)}$ articles`,           get expr(){return `${this.q.match(/\d+/)[0]}${letter}`}},
+        {q:`le prix après $${rand(1,5)}$ € de réduction`,  get expr(){return `${letter} - ${this.q.match(/\d+/)[0]}`}},
+        {q:`le prix avec $${rand(2,4)}$ € de frais de port`, get expr(){return `${letter} + ${this.q.match(/\d+/)[0]}`}},
+        {q:`le double du prix`,                            expr:`2${letter}`},
+      ]
+    },
+    {
+      desc:`On note $${letter}$ le nombre de billes de Tom.`,
+      items:[
+        {q:`le nombre de billes après en avoir gagné $${rand(2,8)}$`, get expr(){return `${letter} + ${this.q.match(/\d+/)[0]}`}},
+        {q:`le nombre de billes après en avoir perdu $${rand(2,6)}$`, get expr(){return `${letter} - ${this.q.match(/\d+/)[0]}`}},
+        {q:`le double de ses billes`,                      expr:`2${letter}`},
+        {q:`le triple de ses billes`,                      expr:`3${letter}`},
+      ]
+    },
+  ]);
+  const item = pick(ctx.items);
+  return {
+    question:`${ctx.desc}\n\nComment noter **${item.q}** ?`,
+    correction:`${item.q} se note : $$${item.expr}$$`
+  };
 };
 
 G[93] = () => {
