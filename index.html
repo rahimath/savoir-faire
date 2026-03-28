@@ -870,7 +870,7 @@ G[92] = () => {
       {text:`le triple de la somme de $${rand(2,5)}$ et de $n$`, expr:`3(n + ${rand(2,5)})`},
     ]);
     return {
-      question:`Soit $n$ un nombre entier.\n\nÉcris l'expression littérale correspondant à :\n\n$$${item.text}$$`,
+      question:`Soit $n$ un nombre entier.\n\nÉcris l'expression littérale correspondant à :$$${item.text}$$`,
       correction:`${item.text} s'écrit : $$${item.expr}$$`
     };
   }
