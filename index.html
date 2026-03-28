@@ -778,32 +778,70 @@ G[92] = () => {
   if(type==='programme') {
     const c1=rand(2,6), c2=rand(1,9), c3=rand(2,6), c4=rand(1,8);
 
-    // Les options numériques apparaissent 4x, "nombre de départ" 1x → ~20% de chance
+    // Chaque expression est représentée par { raw, simplified, isSum }
+    // isSum = true si l'expression est une addition/soustraction (nécessite des parenthèses avant une multiplication)
+    const applyAdd = (ex, k) => ({
+      raw:        `${ex.raw} + ${k}`,
+      simplified: `${ex.simplified} + ${k}`,
+      isSum: true
+    });
+    const applySou = (ex, k) => ({
+      raw:        `${ex.raw} - ${k}`,
+      simplified: `${ex.simplified} - ${k}`,
+      isSum: true
+    });
+    const applyMul = (ex, k) => {
+      const needParen = ex.isSum;
+      return {
+        raw:        needParen ? `${k} \\times (${ex.raw})`        : `${k} \\times ${ex.raw}`,
+        simplified: needParen ? `${k}(${ex.simplified})`          : `${k}${ex.simplified}`,
+        isSum: false
+      };
+    };
+    const applyAddX = (ex) => ({
+      raw:        `${ex.raw} + x`,
+      simplified: `${ex.simplified} + x`,
+      isSum: true
+    });
+    const applySouX = (ex) => ({
+      raw:        `${ex.raw} - x`,
+      simplified: `${ex.simplified} - x`,
+      isSum: true
+    });
+    const applyMulX = (ex) => {
+      const needParen = ex.isSum;
+      return {
+        raw:        needParen ? `(${ex.raw}) \\times x`        : `${ex.raw} \\times x`,
+        simplified: needParen ? `(${ex.simplified}) \\times x` : `${ex.simplified} \\times x`,
+        isSum: false
+      };
+    };
+
     const opAdd = pick([
-      { desc:`Ajouter $${c2}$`,             fn: e => `${e} + ${c2}`,        fnRaw: e => `${e} + ${c2}`        },
-      { desc:`Ajouter $${c2}$`,             fn: e => `${e} + ${c2}`,        fnRaw: e => `${e} + ${c2}`        },
-      { desc:`Ajouter $${c2}$`,             fn: e => `${e} + ${c2}`,        fnRaw: e => `${e} + ${c2}`        },
-      { desc:`Ajouter $${c2}$`,             fn: e => `${e} + ${c2}`,        fnRaw: e => `${e} + ${c2}`        },
-      { desc:`Ajouter le nombre de départ`, fn: e => `${e} + x`,            fnRaw: e => `${e} + x`            },
+      { desc:`Ajouter $${c2}$`,             apply: ex => applyAdd(ex, c2)  },
+      { desc:`Ajouter $${c2}$`,             apply: ex => applyAdd(ex, c2)  },
+      { desc:`Ajouter $${c2}$`,             apply: ex => applyAdd(ex, c2)  },
+      { desc:`Ajouter $${c2}$`,             apply: ex => applyAdd(ex, c2)  },
+      { desc:`Ajouter le nombre de départ`, apply: ex => applyAddX(ex)     },
     ]);
     const opSou = pick([
-      { desc:`Soustraire $${c4}$`,              fn: e => `${e} - ${c4}`,    fnRaw: e => `${e} - ${c4}`        },
-      { desc:`Soustraire $${c4}$`,              fn: e => `${e} - ${c4}`,    fnRaw: e => `${e} - ${c4}`        },
-      { desc:`Soustraire $${c4}$`,              fn: e => `${e} - ${c4}`,    fnRaw: e => `${e} - ${c4}`        },
-      { desc:`Soustraire $${c4}$`,              fn: e => `${e} - ${c4}`,    fnRaw: e => `${e} - ${c4}`        },
-      { desc:`Soustraire le nombre de départ`,  fn: e => `${e} - x`,        fnRaw: e => `${e} - x`            },
+      { desc:`Soustraire $${c4}$`,              apply: ex => applySou(ex, c4) },
+      { desc:`Soustraire $${c4}$`,              apply: ex => applySou(ex, c4) },
+      { desc:`Soustraire $${c4}$`,              apply: ex => applySou(ex, c4) },
+      { desc:`Soustraire $${c4}$`,              apply: ex => applySou(ex, c4) },
+      { desc:`Soustraire le nombre de départ`,  apply: ex => applySouX(ex)    },
     ]);
     const opMul = pick([
-      { desc:`Multiplier par $${c1}$`,              fn: e => `${c1}(${e})`,         fnRaw: e => `${c1} \\times (${e})`     },
-      { desc:`Multiplier par $${c1}$`,              fn: e => `${c1}(${e})`,         fnRaw: e => `${c1} \\times (${e})`     },
-      { desc:`Multiplier par $${c1}$`,              fn: e => `${c1}(${e})`,         fnRaw: e => `${c1} \\times (${e})`     },
-      { desc:`Multiplier par $${c1}$`,              fn: e => `${c1}(${e})`,         fnRaw: e => `${c1} \\times (${e})`     },
-      { desc:`Multiplier par le nombre de départ`,  fn: e => `(${e}) \\times x`,    fnRaw: e => `(${e}) \\times x`         },
+      { desc:`Multiplier par $${c1}$`,              apply: ex => applyMul(ex, c1)  },
+      { desc:`Multiplier par $${c1}$`,              apply: ex => applyMul(ex, c1)  },
+      { desc:`Multiplier par $${c1}$`,              apply: ex => applyMul(ex, c1)  },
+      { desc:`Multiplier par $${c1}$`,              apply: ex => applyMul(ex, c1)  },
+      { desc:`Multiplier par le nombre de départ`,  apply: ex => applyMulX(ex)     },
     ]);
     const opBonus = pick([
-      { desc:`Ajouter $${c3}$`,        fn: e => `${e} + ${c3}`,    fnRaw: e => `${e} + ${c3}`           },
-      { desc:`Soustraire $${c2}$`,     fn: e => `${e} - ${c2}`,    fnRaw: e => `${e} - ${c2}`           },
-      { desc:`Multiplier par $${c3}$`, fn: e => `${c3}(${e})`,     fnRaw: e => `${c3} \\times (${e})`   },
+      { desc:`Ajouter $${c3}$`,        apply: ex => applyAdd(ex, c3) },
+      { desc:`Soustraire $${c2}$`,     apply: ex => applySou(ex, c2) },
+      { desc:`Multiplier par $${c3}$`, apply: ex => applyMul(ex, c3) },
     ]);
 
     const mandatory = shuffle([opAdd, opSou, opMul]);
@@ -811,14 +849,19 @@ G[92] = () => {
 
     const stepDescs = ops.map(o=>`- ${o.desc}`).join('\n');
 
-    let exprFinal = 'x';
-    ops.forEach(o => { exprFinal = o.fn(exprFinal); });
+    // Calculer les états intermédiaires
+    const states = [];
+    let state = { raw:'x', simplified:'x', isSum:false };
+    ops.forEach(o => {
+      state = o.apply(state);
+      states.push(state);
+    });
 
-    const detailLines = ops.map((o,i) => {
-      let e = 'x';
-      ops.slice(0,i+1).forEach(op => { e = op.fnRaw(e); });
-      return `- ${o.desc} : $${e}$`;
-    }).join('\n');
+    const detailLines = ops.map((o,i) =>
+      `- ${o.desc} : $${states[i].raw}$`
+    ).join('\n');
+
+    const exprFinal = states[states.length-1].simplified;
 
     return {
       question:`Voici un programme de calcul :\n\n- Choisir un nombre\n${stepDescs}\n\nÉcris l'expression littérale obtenue si on choisit $x$ comme nombre de départ.`,
