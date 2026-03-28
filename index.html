@@ -778,80 +778,68 @@ G[92] = () => {
   if(type==='programme') {
     const c1=rand(2,6), c2=rand(1,9), c3=rand(2,6), c4=rand(1,8);
 
-    // Chaque expression est représentée par { raw, simplified, isSum }
-    // isSum = true si l'expression est une addition/soustraction (nécessite des parenthèses avant une multiplication)
     const applyAdd = (ex, k) => ({
       raw:        `${ex.raw} + ${k}`,
       simplified: `${ex.simplified} + ${k}`,
-      isSum: true
+      isSum: true, lastOp: 'add'
     });
     const applySou = (ex, k) => ({
       raw:        `${ex.raw} - ${k}`,
       simplified: `${ex.simplified} - ${k}`,
-      isSum: true
+      isSum: true, lastOp: 'sou'
     });
     const applyMul = (ex, k) => {
       const needParen = ex.isSum;
       return {
-        raw:        needParen ? `${k} \\times (${ex.raw})`        : `${k} \\times ${ex.raw}`,
-        simplified: needParen ? `${k}(${ex.simplified})`          : `${k}${ex.simplified}`,
-        isSum: false
+        raw:        needParen ? `${k} \\times (${ex.raw})`   : `${k} \\times ${ex.raw}`,
+        simplified: needParen ? `${k}(${ex.simplified})`     : `${k}${ex.simplified}`,
+        isSum: false, lastOp: 'mul'
       };
     };
-    const applyAddX = (ex) => ({
-      raw:        `${ex.raw} + x`,
-      simplified: `${ex.simplified} + x`,
-      isSum: true
-    });
-    const applySouX = (ex) => ({
-      raw:        `${ex.raw} - x`,
-      simplified: `${ex.simplified} - x`,
-      isSum: true
-    });
     const applyMulX = (ex) => {
       const needParen = ex.isSum;
       return {
         raw:        needParen ? `(${ex.raw}) \\times x`        : `${ex.raw} \\times x`,
         simplified: needParen ? `(${ex.simplified}) \\times x` : `${ex.simplified} \\times x`,
-        isSum: false
+        isSum: false, lastOp: 'mul'
       };
     };
 
-    const opAdd = pick([
-      { desc:`Ajouter $${c2}$`,             apply: ex => applyAdd(ex, c2)  },
-      { desc:`Ajouter $${c2}$`,             apply: ex => applyAdd(ex, c2)  },
-      { desc:`Ajouter $${c2}$`,             apply: ex => applyAdd(ex, c2)  },
-      { desc:`Ajouter $${c2}$`,             apply: ex => applyAdd(ex, c2)  },
-      { desc:`Ajouter le nombre de départ`, apply: ex => applyAddX(ex)     },
-    ]);
-    const opSou = pick([
-      { desc:`Soustraire $${c4}$`,              apply: ex => applySou(ex, c4) },
-      { desc:`Soustraire $${c4}$`,              apply: ex => applySou(ex, c4) },
-      { desc:`Soustraire $${c4}$`,              apply: ex => applySou(ex, c4) },
-      { desc:`Soustraire $${c4}$`,              apply: ex => applySou(ex, c4) },
-      { desc:`Soustraire le nombre de départ`,  apply: ex => applySouX(ex)    },
-    ]);
-    const opMul = pick([
-      { desc:`Multiplier par $${c1}$`,              apply: ex => applyMul(ex, c1)  },
-      { desc:`Multiplier par $${c1}$`,              apply: ex => applyMul(ex, c1)  },
-      { desc:`Multiplier par $${c1}$`,              apply: ex => applyMul(ex, c1)  },
-      { desc:`Multiplier par $${c1}$`,              apply: ex => applyMul(ex, c1)  },
-      { desc:`Multiplier par le nombre de départ`,  apply: ex => applyMulX(ex)     },
-    ]);
-    const opBonus = pick([
-      { desc:`Ajouter $${c3}$`,        apply: ex => applyAdd(ex, c3) },
-      { desc:`Soustraire $${c2}$`,     apply: ex => applySou(ex, c2) },
-      { desc:`Multiplier par $${c3}$`, apply: ex => applyMul(ex, c3) },
-    ]);
+    // Construit un programme valide de 3 étapes :
+    // - toujours une addition, une soustraction, une multiplication (dans un ordre aléatoire)
+    // - on vérifie qu'on n'enchaîne jamais add→sou ou sou→add
+    const opAddNum = { desc:`Ajouter $${c2}$`,            apply: ex => applyAdd(ex, c2), type:'add' };
+    const opSouNum = { desc:`Soustraire $${c4}$`,         apply: ex => applySou(ex, c4), type:'sou' };
+    const opMulNum = { desc:`Multiplier par $${c1}$`,     apply: ex => applyMul(ex, c1), type:'mul' };
+    const opMulX   = { desc:`Multiplier par le nombre de départ`, apply: ex => applyMulX(ex), type:'mul' };
 
-    const mandatory = shuffle([opAdd, opSou, opMul]);
-    const ops = pick([true,false]) ? [...mandatory, opBonus] : mandatory;
+    const opMulChosen = pick([opMulNum,opMulNum,opMulNum,opMulNum,opMulX]);
+
+    // Génère un ordre valide des 3 opérations (add, sou, mul)
+    // Contrainte : add et sou ne peuvent pas être adjacentes
+    function validOrder() {
+      const orders = shuffle([
+        [opAddNum, opSouNum, opMulChosen],
+        [opAddNum, opMulChosen, opSouNum],
+        [opSouNum, opAddNum, opMulChosen],
+        [opSouNum, opMulChosen, opAddNum],
+        [opMulChosen, opAddNum, opSouNum],
+        [opMulChosen, opSouNum, opAddNum],
+      ]);
+      // Filtre : pas add→sou ni sou→add en positions adjacentes
+      return orders.find(ord =>
+        !(ord[0].type==='add' && ord[1].type==='sou') &&
+        !(ord[0].type==='sou' && ord[1].type==='add') &&
+        !(ord[1].type==='add' && ord[2].type==='sou') &&
+        !(ord[1].type==='sou' && ord[2].type==='add')
+      );
+    }
+    const ops = validOrder();
 
     const stepDescs = ops.map(o=>`- ${o.desc}`).join('\n');
 
-    // Calculer les états intermédiaires
     const states = [];
-    let state = { raw:'x', simplified:'x', isSum:false };
+    let state = { raw:'x', simplified:'x', isSum:false, lastOp:'' };
     ops.forEach(o => {
       state = o.apply(state);
       states.push(state);
