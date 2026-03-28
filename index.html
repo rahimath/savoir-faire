@@ -774,64 +774,68 @@ G[91] = () => {
 
 G[92] = () => {
   const type=pick(['programme','fonction_n','situation']);
+
   if(type==='programme') {
     const c1=rand(2,6), c2=rand(1,9), c3=rand(2,6), c4=rand(1,8);
-    // Opérations de base — une de chaque est obligatoire
+
     const opAdd = pick([
-      { desc:`Ajouter $${c2}$`,             fn: e => `${e} + ${c2}`  },
-      { desc:`Ajouter le nombre de départ`, fn: e => `${e} + x`      },
+      { desc:`Ajouter $${c2}$`,             fn: e => `${e} + ${c2}`,        fnRaw: e => `${e} + ${c2}`  },
+      { desc:`Ajouter le nombre de départ`, fn: e => `${e} + x`,            fnRaw: e => `${e} + x`      },
     ]);
     const opSou = pick([
-      { desc:`Soustraire $${c4}$`,              fn: e => `${e} - ${c4}`  },
-      { desc:`Soustraire le nombre de départ`,  fn: e => `${e} - x`      },
+      { desc:`Soustraire $${c4}$`,             fn: e => `${e} - ${c4}`,     fnRaw: e => `${e} - ${c4}`  },
+      { desc:`Soustraire le nombre de départ`, fn: e => `${e} - x`,         fnRaw: e => `${e} - x`      },
     ]);
     const opMul = pick([
-      { desc:`Multiplier par $${c1}$`,              fn: e => `${c1}(${e})`           },
-      { desc:`Multiplier par le nombre de départ`,  fn: e => `(${e}) \\times x`      },
+      { desc:`Multiplier par $${c1}$`,             fn: e => `${c1}(${e})`,          fnRaw: e => `${c1} \\times (${e})`       },
+      { desc:`Multiplier par le nombre de départ`, fn: e => `(${e}) \\times x`,     fnRaw: e => `(${e}) \\times x`           },
     ]);
-    // Étape bonus optionnelle (4e étape)
     const opBonus = pick([
-      { desc:`Ajouter $${c3}$`,        fn: e => `${e} + ${c3}`  },
-      { desc:`Soustraire $${c2}$`,     fn: e => `${e} - ${c2}`  },
-      { desc:`Multiplier par $${c3}$`, fn: e => `${c3}(${e})`   },
+      { desc:`Ajouter $${c3}$`,        fn: e => `${e} + ${c3}`,    fnRaw: e => `${e} + ${c3}`           },
+      { desc:`Soustraire $${c2}$`,     fn: e => `${e} - ${c2}`,    fnRaw: e => `${e} - ${c2}`           },
+      { desc:`Multiplier par $${c3}$`, fn: e => `${c3}(${e})`,     fnRaw: e => `${c3} \\times (${e})`   },
     ]);
-    // Mélanger les 3 obligatoires + éventuellement la bonus
+
     const mandatory = shuffle([opAdd, opSou, opMul]);
     const ops = pick([true,false]) ? [...mandatory, opBonus] : mandatory;
+
     const stepDescs = ops.map(o=>`- ${o.desc}`).join('\n');
-    // Calculer l'expression finale
-    let expr = 'x';
-    ops.forEach(o => { expr = o.fn(expr); });
-    // Détail étape par étape pour la correction
+
+    // Expression finale simplifiée (avec parenthèses implicites)
+    let exprFinal = 'x';
+    ops.forEach(o => { exprFinal = o.fn(exprFinal); });
+
+    // Étapes intermédiaires avec \times explicites
     const detailLines = ops.map((o,i) => {
       let e = 'x';
-      ops.slice(0,i+1).forEach(op => { e = op.fn(e); });
+      ops.slice(0,i+1).forEach(op => { e = op.fnRaw(e); });
       return `- ${o.desc} : $${e}$`;
     }).join('\n');
+
     return {
-      question:`**Voici un programme de calcul :**\n\n- Choisir un nombre\n${stepDescs}\n\nÉcris l'expression littérale obtenue si on choisit $x$ comme nombre de départ.`,
-      correction:`On applique chaque étape depuis $x$ :\n\n- Départ : $x$\n${detailLines}\n\nL'expression est : $$${expr}$$`
+      question:`Voici un programme de calcul :\n\n- Choisir un nombre\n${stepDescs}\n\nÉcris l'expression littérale obtenue si on choisit $x$ comme nombre de départ.`,
+      correction:`On applique chaque étape depuis $x$ :\n\n- Départ : $x$\n${detailLines}\n\nL'expression est : $$${exprFinal}$$`
     };
   }
 
   if(type==='fonction_n') {
     const item = pick([
-      {text:'le double de $n$',                                    expr:'2n'},
-      {text:'le triple de $n$',                                    expr:'3n'},
-      {text:`$n$ augmenté de $${rand(2,9)}$`,                      expr:`n + ${rand(2,9)}`},
-      {text:`$n$ diminué de $${rand(2,9)}$`,                       expr:`n - ${rand(2,9)}`},
-      {text:`la moitié de $n$`,                                    expr:'\\dfrac{n}{2}'},
-      {text:`le nombre entier qui suit $n$`,                       expr:'n+1'},
-      {text:`le nombre entier qui précède $n$`,                    expr:'n-1'},
-      {text:`la différence de $n$ et de $${rand(2,8)}$`,           expr:`n - ${rand(2,8)}`},
-      {text:`le triple de la somme de $${rand(2,5)}$ et de $n$`,   expr:`3(n + ${rand(2,5)})`},
+      {text:'le double de $n$',                                  expr:'2n'},
+      {text:'le triple de $n$',                                  expr:'3n'},
+      {text:`$n$ augmenté de $${rand(2,9)}$`,                    expr:`n + ${rand(2,9)}`},
+      {text:`$n$ diminué de $${rand(2,9)}$`,                     expr:`n - ${rand(2,9)}`},
+      {text:`la moitié de $n$`,                                  expr:'\\dfrac{n}{2}'},
+      {text:`le nombre entier qui suit $n$`,                     expr:'n+1'},
+      {text:`le nombre entier qui précède $n$`,                  expr:'n-1'},
+      {text:`la différence de $n$ et de $${rand(2,8)}$`,         expr:`n - ${rand(2,8)}`},
+      {text:`le triple de la somme de $${rand(2,5)}$ et de $n$`, expr:`3(n + ${rand(2,5)})`},
     ]);
     return {
-      question:`Soit $n$ un nombre entier. Écris l'expression littérale correspondant à : **${item.text}**.`,
+      question:`Soit $n$ un nombre entier. Écris l'expression littérale correspondant à : ${item.text}.`,
       correction:`${item.text} s'écrit : $$${item.expr}$$`
     };
   }
-  
+
   // situation
   const letter = pick(['a','p','n']);
   const ctx = pick([
@@ -866,7 +870,7 @@ G[92] = () => {
   ]);
   const item = pick(ctx.items);
   return {
-    question:`${ctx.desc}\n\nComment noter **${item.q}** ?`,
+    question:`${ctx.desc}\n\nComment noter ${item.q} ?`,
     correction:`${item.q} se note : $$${item.expr}$$`
   };
 };
