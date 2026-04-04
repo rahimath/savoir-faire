@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Savoir-faire</title>
+<title>Savoir-faire • 5ème</title>
 
 <!-- Google Analytics — remplace G-XXXXXXXXXX par ton vrai ID de mesure -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
@@ -93,9 +93,10 @@ body::before { content: ''; position: fixed; top: 0; right: 0; width: 100%; heig
 .card-question-label { font-size: .65rem; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-faint); font-weight: 500; margin-bottom: 16px; }
 
 /* Question & answer content */
-#question-text, #answer-text { font-family: 'Lora', serif; font-size: 1.05rem; line-height: 1.85; color: var(--ink); }
+#question-text, #answer-text { font-family: 'Lora', serif; font-size: 1.05rem; line-height: 1.8; color: var(--ink); }
 #question-text p, #answer-text p { margin-bottom: .65em; }
 #question-text p:last-child, #answer-text p:last-child { margin-bottom: 0; }
+#question-text ul, #question-text ol { margin-top: 0; margin-bottom: .65em; padding-left: 1.5em; }
 #answer-text strong { font-weight: 600; color: var(--green); }
 #answer-text ol, #answer-text ul { padding-left: 1.5em; margin: .5em 0; }
 #answer-text li { margin-bottom: .4em; }
@@ -135,7 +136,7 @@ body::before { content: ''; position: fixed; top: 0; right: 0; width: 100%; heig
 
 <aside id="sidebar">
   <div class="sidebar-header">
-    <h1>Savoir-faire</h1>
+    <h1>Savoir-faire・5ème</h1>
     <p>Sélectionne un savoir-faire pour t'entraîner</p>
   </div>
   <div class="sidebar-scroll" id="sidebar-scroll"></div>
@@ -149,7 +150,7 @@ body::before { content: ''; position: fixed; top: 0; right: 0; width: 100%; heig
 
 <main id="main">
   <div id="welcome">
-    <span class="welcome-icon">📐</span>
+    <span class="welcome-icon">✍</span>
     <h2>Prêt à s'entraîner ?</h2>
     <p>Choisis un savoir-faire dans le menu à gauche. Une question te sera posée, et tu pourras afficher la correction quand tu veux.</p>
     <div class="hint-grid">
@@ -767,7 +768,7 @@ G[91] = () => {
   const litIdx=chosen.map((c,i)=>c.lit?labels[i]:null).filter(Boolean);
   const numIdx=chosen.map((c,i)=>!c.lit?labels[i]:null).filter(Boolean);
   return {
-    question:`Voici cinq expressions :\n\n${lines}\n\nLesquelles sont des **expressions littérales** ?`,
+    question:`Voici cinq expressions :\n\n${lines} \n\nParmi elles, lesquelles sont des expressions littérales ?`,
     correction:`**Rappel :** une expression littérale contient au moins une lettre représentant un nombre.\n\n${chosen.map((c,i)=>`- $${labels[i]} = ${c.e}$ : **${c.lit?'littérale':'numérique'}**${c.lit?' (contient $'+letter+'$)':''}`).join('\n')}\n\nRéponse : **${litIdx.join(', ')}** ${litIdx.length>1?'sont des expressions':'est une expression'} littérale${litIdx.length>1?'s':''}.`
   };
 };
@@ -852,25 +853,30 @@ G[92] = () => {
     const exprFinal = states[states.length-1].simplified;
 
     return {
-      question:`Voici un programme de calcul :\n\n- Choisir un nombre\n${stepDescs}\n\nÉcris l'expression littérale obtenue si on choisit $x$ comme nombre de départ.`,
+      question:`Voici un programme de calcul :\n\n- Choisir un nombre\n${stepDescs}\n\nÉcrire l'expression littérale obtenue si on choisit $x$ comme nombre de départ.`,
       correction:`On applique chaque étape depuis $x$ :\n\n- Départ : $x$\n${detailLines}\n\nL'expression est : $$${exprFinal}$$`
     };
   }
 
   if(type==='fonction_n') {
+    const r1=rand(2,9), r2=rand(2,14), r3=rand(2,9), r4=rand(2,9), r5=rand(2,9), r6=rand(2,9);
     const item = pick([
-      {text:'le double de $n$',                                  expr:'2n'},
-      {text:'le triple de $n$',                                  expr:'3n'},
-      {text:`$n$ augmenté de $${rand(2,9)}$`,                    expr:`n + ${rand(2,9)}`},
-      {text:`$n$ diminué de $${rand(2,9)}$`,                     expr:`n - ${rand(2,9)}`},
-      {text:`la moitié de $n$`,                                  expr:'\\dfrac{n}{2}'},
-      {text:`le nombre entier qui suit $n$`,                     expr:'n+1'},
-      {text:`le nombre entier qui précède $n$`,                  expr:'n-1'},
-      {text:`la différence de $n$ et de $${rand(2,8)}$`,         expr:`n - ${rand(2,8)}`},
-      {text:`le triple de la somme de $${rand(2,5)}$ et de $n$`, expr:`3(n + ${rand(2,5)})`},
+      {text:'Le double de $n$',                                       expr:'2n'},
+      {text:'Le triple de $n$',                                       expr:'3n'},
+      {text:`$n$ augmenté de $${r1}$`,                                expr:`n + ${r1}`},
+      {text:`$n$ diminué de $${r1}$`,                                 expr:`n - ${r1}`},
+      {text:`La moitié de $n$`,                                       expr:'\\dfrac{n}{2}'},
+      {text:`Le nombre entier qui suit $n$`,                          expr:'n+1'},
+      {text:`Le nombre entier qui précède $n$`,                       expr:'n-1'},
+      {text:`La somme de $n$ et de $${r2}$`,                          expr:`n + ${r2}`},
+      {text:`La différence de $n$ et de $${r2}$`,                     expr:`n - ${r2}`},
+      {text:`Le double de la somme de $${r3}$ et de $n$`,             expr:`2(n + ${r3})`},
+      {text:`Le triple de la somme de $${r4}$ et de $n$`,             expr:`3(n + ${r4})`},
+      {text:`Le double de la différence de $n$ et de $${r5}$`,        expr:`2(n - ${r5})`},
+      {text:`Le triple de la différence de $n$ et de $${r6}$`,        expr:`3(n - ${r6})`},
     ]);
     return {
-      question:`Soit $n$ un nombre entier.\n\nÉcris l'expression littérale correspondant à : ${item.text}`,
+      question:`Soit $n$ un nombre entier. Écrire l'expression littérale correspondant à : \n\n<center>${item.text}<\center>`,
       correction:`${item.text} s'écrit : $$${item.expr}$$`
     };
   }
@@ -879,7 +885,7 @@ G[92] = () => {
   const letter = pick(['a','p','n']);
   const ctx = pick([
     {
-      desc:`On note $${letter}$ l'âge de Lucas aujourd'hui.`,
+      desc:`On note $${letter}$ l'âge de Clara aujourd'hui.`,
       items:[
         {q:`son âge dans $${rand(2,5)}$ ans`,              get expr(){return `${letter} + ${this.q.match(/\d+/)[0]}`}},
         {q:`son âge il y a $${rand(1,4)}$ ans`,            get expr(){return `${letter} - ${this.q.match(/\d+/)[0]}`}},
@@ -898,7 +904,7 @@ G[92] = () => {
       ]
     },
     {
-      desc:`On note $${letter}$ le nombre de billes de Tom.`,
+      desc:`On note $${letter}$ le nombre de billes de Lucie.`,
       items:[
         {q:`le nombre de billes après en avoir gagné $${rand(2,8)}$`, get expr(){return `${letter} + ${this.q.match(/\d+/)[0]}`}},
         {q:`le nombre de billes après en avoir perdu $${rand(2,6)}$`, get expr(){return `${letter} - ${this.q.match(/\d+/)[0]}`}},
@@ -938,7 +944,7 @@ G[93] = () => {
   ];
   const item=pick(pool);
   return {
-    question:`Simplifie l'expression :\n\n$$${item.e}$$`,
+    question:`Simplifier l'expression :\n\n$$${item.e}$$`,
     correction:`**Règles :** on supprime le signe $\\times$, on place le nombre avant la lettre, $x\\times x = x^2$.\n\n${item.c}`
   };
 };
@@ -963,9 +969,9 @@ G[94] = () => {
     const l2=pick(['y','b']), c1=rand(2,6),c2=rand(2,5),c3=rand(1,4),c4=rand(1,5);
     const r1=c1-c3, r2=c2+c4;
     expr=`${c1}${letter} + ${c2}${l2} - ${c3}${letter} + ${c4}${l2}`;
-    correction=`On regroupe par variable :\n\n$$(${c1}-${c3})${letter} + (${c2}+${c4})${l2} = ${r1}${letter} + ${r2}${l2}$$`;
+    correction=`On regroupe par familles, puis on réduit famille par famille :\n\n$$(${c1}-${c3})${letter} + (${c2}+${c4})${l2} = ${r1}${letter} + ${r2}${l2}$$`;
   }
-  return { question:`Réduis l'expression : $$${expr}$$`, correction };
+  return { question:`Réduire l'expression : $$${expr}$$`, correction };
 };
 
 G[95] = () => {
@@ -974,7 +980,7 @@ G[95] = () => {
   const expr=`${c1}${letter} ${op} ${c2}`;
   const res=op==='+'?c1*val+c2:c1*val-c2;
   return {
-    question:`Calcule la valeur de $${expr}$ pour $${letter} = ${val}$.`,
+    question:`Calculer la valeur de $${expr}$ pour $${letter} = ${val}$`,
     correction:`On remplace $${letter}$ par $${val}$ :\n\n$$${c1} \\times ${val} ${op} ${c2} = ${c1*val} ${op} ${c2} = ${res}$$`
   };
 };
@@ -986,7 +992,7 @@ G[96] = () => {
   const wrong=right+(pick([true,false])?diff:-diff);
   const vals=shuffle([right,wrong]);
   return {
-    question:`Pour chacune des valeurs suivantes, teste si elle vérifie l'égalité $${c1}${letter} + ${c2} = ${result}$ :\n\n- $${letter} = ${vals[0]}$\n- $${letter} = ${vals[1]}$`,
+    question:`Pour chacune des valeurs suivantes, tester si elle vérifie l'égalité $$${c1}${letter} + ${c2} = ${result}$$ \n\n- $${letter} = ${vals[0]}$\n- $${letter} = ${vals[1]}$`,
     correction:vals.map(v=>{
       const mg=c1*v+c2;
       const ok=mg===result;
