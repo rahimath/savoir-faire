@@ -1199,14 +1199,304 @@ G[94] = () => {
 };
 
 G[95] = () => {
-  const letter=pick(['x','n','a']), c1=rand(2,5), c2=rand(1,9), val=rand(1,8);
-  const op=pick(['+','-']);
-  const expr=`${c1}${letter} ${op} ${c2}`;
-  const res=op==='+'?c1*val+c2:c1*val-c2;
-  return {
-    question:`Calculer la valeur de $${expr}$ pour $${letter} = ${val}$`,
-    correction:`On remplace $${letter}$ par $${val}$ :\n\n$$${c1} \\times ${val} ${op} ${c2} = ${c1*val} ${op} ${c2} = ${res}$$`
-  };
+  const type = pick([1,2,3,4,5]);
+
+  const rk  = () => rand(2,9);
+  const rk1 = () => rand(1,9); // pour type 4 où k peut valoir 1
+
+  function aligned(lines) {
+    return `$$\\begin{aligned}\n${lines.map(l=>`  & ${l}`).join(' \\\\[3pt]\n')}\n\\end{aligned}$$`;
+  }
+
+  // ── TYPE 1 : ka ± k  ou  k ± ka ─────────────────────────────────────────
+  if (type === 1) {
+    const v   = pick(['a','n','x']);
+    const k1  = rk(), k2 = rk();
+    const val = rand(1,8);
+    const op  = pick(['+','-']);
+    const arr = pick([1,2]); // 1: ka op k  /  2: k op ka
+
+    let expr, line1, line2, res;
+    if (arr===1) {
+      expr  = `${k1}${v} ${op} ${k2}`;
+      line1 = `= ${k1}${v} ${op} ${k2}`;
+      line2 = `= ${k1} \\times ${val} ${op} ${k2}`;
+      const step = k1*val;
+      res   = op==='+' ? step+k2 : step-k2;
+      return {
+        question: `Calculer :\n\n$$${expr} \\text{ pour } ${v} = ${val}$$`,
+        correction: `On remplace $${v}$ par $${val}$ :\n\n${aligned([line1, line2, `= ${step} ${op} ${k2}`, `= ${res}`])}`
+      };
+    } else {
+      expr  = `${k2} ${op} ${k1}${v}`;
+      line1 = `= ${k2} ${op} ${k1}${v}`;
+      line2 = `= ${k2} ${op} ${k1} \\times ${val}`;
+      const step = k1*val;
+      res   = op==='+' ? k2+step : k2-step;
+      return {
+        question: `Calculer :\n\n$$${expr} \\text{ pour } ${v} = ${val}$$`,
+        correction: `On remplace $${v}$ par $${val}$ :\n\n${aligned([line1, line2, `= ${k2} ${op} ${step}`, `= ${res}`])}`
+      };
+    }
+  }
+
+  // ── TYPE 2 : k(a ± k)  ou  k(k ± a) ─────────────────────────────────────
+  if (type === 2) {
+    const v  = pick(['a','n','x']);
+    const k1 = rk(); // coefficient extérieur
+    const k2 = rk(); // constante dans la parenthèse
+    const op = pick(['+','-']);
+
+    // Garantir que la valeur dans la parenthèse est > 0
+    // arr1 : k1(v op k2)  → si op='-', val > k2  → val dans [k2+1, k2+6]
+    // arr2 : k1(k2 op v)  → si op='-', k2 - val > 0 → val dans [1, k2-1]
+    const arr = pick([1,2]);
+    let val, expr, inner, innerVal, res;
+
+    if (arr===1) {
+      // k1(v op k2), inner = val op k2
+      if (op==='+') {
+        val = rand(1,8);
+        innerVal = val + k2;
+      } else {
+        val = rand(k2+1, k2+6);
+        innerVal = val - k2;
+      }
+      expr = `${k1}(${v} ${op} ${k2})`;
+      inner = op==='+' ? `${val} + ${k2}` : `${val} - ${k2}`;
+      res = k1 * innerVal;
+      return {
+        question: `Calculer :\n\n$$${expr} \\text{ pour } ${v} = ${val}$$`,
+        correction: `On remplace $${v}$ par $${val}$ :\n\n${aligned([
+          `= ${k1}(${v} ${op} ${k2})`,
+          `= ${k1}(${inner})`,
+          `= ${k1} \\times ${innerVal}`,
+          `= ${res}`
+        ])}`
+      };
+    } else {
+      // k1(k2 op v), inner = k2 op val
+      if (op==='+') {
+        val = rand(1,8);
+        innerVal = k2 + val;
+      } else {
+        // k2 - val > 0 → val < k2
+        if (k2 <= 1) { // fallback si k2=2, val=1
+          val = 1;
+        } else {
+          val = rand(1, k2-1);
+        }
+        innerVal = k2 - val;
+      }
+      expr = `${k1}(${k2} ${op} ${v})`;
+      inner = op==='+' ? `${k2} + ${val}` : `${k2} - ${val}`;
+      res = k1 * innerVal;
+      return {
+        question: `Calculer :\n\n$$${expr} \\text{ pour } ${v} = ${val}$$`,
+        correction: `On remplace $${v}$ par $${val}$ :\n\n${aligned([
+          `= ${k1}(${k2} ${op} ${v})`,
+          `= ${k1}(${inner})`,
+          `= ${k1} \\times ${innerVal}`,
+          `= ${res}`
+        ])}`
+      };
+    }
+  }
+
+  // ── TYPE 3 : k(ka ± k)  ou  k(k ± ka) ───────────────────────────────────
+  if (type === 3) {
+    const v  = pick(['a','n','x']);
+    const k1 = rk(); // coefficient extérieur
+    const k2 = rk(); // coefficient de v dans la parenthèse
+    const k3 = rk(); // constante dans la parenthèse
+    const op = pick(['+','-']);
+    const arr = pick([1,2]);
+
+    let val, expr, innerVal, res;
+
+    if (arr===1) {
+      // k1(k2*v op k3), inner = k2*val op k3 > 0
+      if (op==='+') {
+        val = rand(1,6);
+        innerVal = k2*val + k3;
+      } else {
+        // k2*val - k3 > 0 → val > k3/k2
+        val = rand(Math.ceil(k3/k2)+1, Math.ceil(k3/k2)+5);
+        innerVal = k2*val - k3;
+      }
+      expr = `${k1}(${k2}${v} ${op} ${k3})`;
+      const step = k2*val;
+      const inner = op==='+' ? `${step} + ${k3}` : `${step} - ${k3}`;
+      res = k1 * innerVal;
+      return {
+        question: `Calculer :\n\n$$${expr} \\text{ pour } ${v} = ${val}$$`,
+        correction: `On remplace $${v}$ par $${val}$ :\n\n${aligned([
+          `= ${k1}(${k2}${v} ${op} ${k3})`,
+          `= ${k1}(${k2} \\times ${val} ${op} ${k3})`,
+          `= ${k1}(${inner})`,
+          `= ${k1} \\times ${innerVal}`,
+          `= ${res}`
+        ])}`
+      };
+    } else {
+      // k1(k3 op k2*v), inner = k3 op k2*val > 0
+      if (op==='+') {
+        val = rand(1,6);
+        innerVal = k3 + k2*val;
+      } else {
+        // k3 - k2*val > 0 → val < k3/k2
+        val = rand(1, Math.max(1, Math.floor((k3-1)/k2)));
+        innerVal = k3 - k2*val;
+        if (innerVal <= 0) { val = 1; innerVal = k3 - k2; }
+        if (innerVal <= 0) { val = 1; innerVal = 1; } // fallback sécurité
+      }
+      expr = `${k1}(${k3} ${op} ${k2}${v})`;
+      const step = k2*val;
+      const inner = op==='+' ? `${k3} + ${step}` : `${k3} - ${step}`;
+      res = k1 * innerVal;
+      return {
+        question: `Calculer :\n\n$$${expr} \\text{ pour } ${v} = ${val}$$`,
+        correction: `On remplace $${v}$ par $${val}$ :\n\n${aligned([
+          `= ${k1}(${k3} ${op} ${k2}${v})`,
+          `= ${k1}(${k3} ${op} ${k2} \\times ${val})`,
+          `= ${k1}(${inner})`,
+          `= ${k1} \\times ${innerVal}`,
+          `= ${res}`
+        ])}`
+      };
+    }
+  }
+
+  // ── TYPE 4 : ka ± kb ± k  ou  ka ± k ± kb ───────────────────────────────
+  if (type === 4) {
+    const [va, vb] = pick([['a','b'],['x','y']]);
+    // k peut valoir 1 mais pour un seul terme seulement
+    const whichOne = pick([0,1,2]); // lequel des 3 k peut valoir 1
+    const ks = [rk(), rk(), rk()];
+    ks[whichOne] = rand(1,9); // celui-là peut valoir 1
+    // les autres doivent être >= 2
+    for (let i=0; i<3; i++) if (i!==whichOne && ks[i]<2) ks[i]=2;
+    const [k1,k2,k3] = ks;
+
+    const valA = rand(1,6), valB = rand(1,6);
+    const op1 = pick(['+','-']), op2 = pick(['+','-']);
+    const arr  = pick([1,2]); // 1: ka op kb op k  /  2: ka op k op kb
+
+    let expr, line2, res;
+    const t1 = k1===1 ? va : `${k1}${va}`;
+    const t2 = k2===1 ? vb : `${k2}${vb}`;
+
+    if (arr===1) {
+      expr  = `${t1} ${op1} ${t2} ${op2} ${k3}`;
+      const v1=k1*valA, v2=k2*valB;
+      line2 = `= ${k1===1?valA:`${k1} \\times ${valA}`} ${op1} ${k2===1?valB:`${k2} \\times ${valB}`} ${op2} ${k3}`;
+      res   = v1 + (op1==='+'?1:-1)*v2 + (op2==='+'?1:-1)*k3;
+      const mid = v1 + (op1==='+'?1:-1)*v2;
+      return {
+        question: `Calculer :\n\n$$${expr} \\text{ pour } ${va} = ${valA} \\text{ et } ${vb} = ${valB}$$`,
+        correction: `On remplace $${va}$ par $${valA}$ et $${vb}$ par $${valB}$ :\n\n${aligned([
+          `= ${expr}`,
+          line2,
+          `= ${v1} ${op1} ${v2} ${op2} ${k3}`,
+          `= ${mid} ${op2} ${k3}`,
+          `= ${res}`
+        ])}`
+      };
+    } else {
+      expr  = `${t1} ${op1} ${k3} ${op2} ${t2}`;
+      const v1=k1*valA, v2=k2*valB;
+      line2 = `= ${k1===1?valA:`${k1} \\times ${valA}`} ${op1} ${k3} ${op2} ${k2===1?valB:`${k2} \\times ${valB}`}`;
+      res   = v1 + (op1==='+'?1:-1)*k3 + (op2==='+'?1:-1)*v2;
+      const mid = v1 + (op1==='+'?1:-1)*k3;
+      return {
+        question: `Calculer :\n\n$$${expr} \\text{ pour } ${va} = ${valA} \\text{ et } ${vb} = ${valB}$$`,
+        correction: `On remplace $${va}$ par $${valA}$ et $${vb}$ par $${valB}$ :\n\n${aligned([
+          `= ${expr}`,
+          line2,
+          `= ${v1} ${op1} ${k3} ${op2} ${v2}`,
+          `= ${mid} ${op2} ${v2}`,
+          `= ${res}`
+        ])}`
+      };
+    }
+  }
+
+  // ── TYPE 5 : ab ± k  ou  a² ± kb  ou  a(kb ± k) ─────────────────────────
+  if (type === 5) {
+    const subtype = pick([1,2,3]);
+    const [va, vb] = pick([['a','b'],['x','y']]);
+
+    if (subtype===1) {
+      // ab ± k
+      const k  = rk();
+      const op = pick(['+','-']);
+      const valA = rand(1,6), valB = rand(1,6);
+      const prod = valA*valB;
+      const res  = op==='+' ? prod+k : prod-k;
+      const expr = `${va}${vb} ${op} ${k}`;
+      return {
+        question: `Calculer :\n\n$$${expr} \\text{ pour } ${va} = ${valA} \\text{ et } ${vb} = ${valB}$$`,
+        correction: `On remplace $${va}$ par $${valA}$ et $${vb}$ par $${valB}$ :\n\n${aligned([
+          `= ${expr}`,
+          `= ${valA} \\times ${valB} ${op} ${k}`,
+          `= ${prod} ${op} ${k}`,
+          `= ${res}`
+        ])}`
+      };
+    }
+
+    if (subtype===2) {
+      // a² ± kb
+      const k  = rk();
+      const op = pick(['+','-']);
+      const valA = rand(1,6), valB = rand(1,6);
+      const sq  = valA*valA;
+      const kb  = k*valB;
+      const res = op==='+' ? sq+kb : sq-kb;
+      const expr = `${va}^2 ${op} ${k}${vb}`;
+      return {
+        question: `Calculer :\n\n$$${expr} \\text{ pour } ${va} = ${valA} \\text{ et } ${vb} = ${valB}$$`,
+        correction: `On remplace $${va}$ par $${valA}$ et $${vb}$ par $${valB}$ :\n\n${aligned([
+          `= ${va}^2 ${op} ${k}${vb}`,
+          `= ${valA}^2 ${op} ${k} \\times ${valB}`,
+          `= ${sq} ${op} ${kb}`,
+          `= ${res}`
+        ])}`
+      };
+    }
+
+    // subtype 3 : a(kb ± k), avec kb ± k > 0
+    const k1 = rk(); // coefficient extérieur (= valeur de a)
+    const k2 = rk(); // coefficient de b dans la parenthèse
+    const k3 = rk(); // constante dans la parenthèse
+    const op = pick(['+','-']);
+    const valA = rand(1,6);
+
+    let valB, innerVal;
+    if (op==='+') {
+      valB = rand(1,6);
+      innerVal = k2*valB + k3;
+    } else {
+      // k2*valB - k3 > 0 → valB > k3/k2
+      valB = rand(Math.ceil(k3/k2)+1, Math.ceil(k3/k2)+4);
+      innerVal = k2*valB - k3;
+    }
+    const res  = valA * innerVal;
+    const step = k2*valB;
+    const inner = op==='+' ? `${step} + ${k3}` : `${step} - ${k3}`;
+    const expr = `${va}(${k2}${vb} ${op} ${k3})`;
+
+    return {
+      question: `Calculer :\n\n$$${expr} \\text{ pour } ${va} = ${valA} \\text{ et } ${vb} = ${valB}$$`,
+      correction: `On remplace $${va}$ par $${valA}$ et $${vb}$ par $${valB}$ :\n\n${aligned([
+        `= ${va}(${k2}${vb} ${op} ${k3})`,
+        `= ${valA}(${k2} \\times ${valB} ${op} ${k3})`,
+        `= ${valA}(${inner})`,
+        `= ${valA} \\times ${innerVal}`,
+        `= ${res}`
+      ])}`
+    };
+  }
 };
 
 G[96] = () => {
