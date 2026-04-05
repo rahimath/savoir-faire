@@ -950,28 +950,252 @@ G[93] = () => {
 };
 
 G[94] = () => {
-  const letter=pick(['x','n','a','y']);
-  const type=pick(['simple','constantes','deux_var']);
-  let expr, correction;
-  if(type==='simple') {
-    const c1=rand(2,9),c2=rand(2,9),op=pick(['+','-']);
-    const res=op==='+'?c1+c2:c1-c2;
-    expr=`${c1}${letter} ${op} ${c2}${letter}`;
-    correction=`$$${c1}${letter} ${op} ${c2}${letter} = (${c1}${op==='+'?'+':'-'}${c2})${letter} = ${res}${letter}$$`;
-  } else if(type==='constantes') {
-    const c1=rand(2,7),c2=rand(1,5),c3=rand(1,9),c4=rand(1,8);
-    const op=pick(['+','-']);
-    const coefRes=op==='+'?c1+c2:c1-c2;
-    const ctRes=c3+c4;
-    expr=`${c1}${letter} ${op==='+'?'+':'-'} ${c2}${letter} + ${c3} + ${c4}`;
-    correction=`On regroupe les termes en $${letter}$ et les constantes :\n\n$$(${c1}${op==='+'?'+':'-'}${c2})${letter} + (${c3}+${c4}) = ${coefRes}${letter} + ${ctRes}$$`;
-  } else {
-    const l2=pick(['y','b']), c1=rand(2,6),c2=rand(2,5),c3=rand(1,4),c4=rand(1,5);
-    const r1=c1-c3, r2=c2+c4;
-    expr=`${c1}${letter} + ${c2}${l2} - ${c3}${letter} + ${c4}${l2}`;
-    correction=`On regroupe par familles, puis on réduit famille par famille :\n\n$$(${c1}-${c3})${letter} + (${c2}+${c4})${l2} = ${r1}${letter} + ${r2}${l2}$$`;
+  const r = Math.random();
+  const type = r < 0.15 ? 1 : r < 0.35 ? 2 : r < 0.65 ? 3 : 4;
+
+  const rk = () => rand(1,9);
+
+  function terme(k, v='') {
+    if (v === '') return `${k}`;
+    if (k === 1)  return v;
+    if (k === -1) return `-${v}`;
+    return `${k}${v}`;
   }
-  return { question:`Réduire l'expression : $$${expr}$$`, correction };
+
+  function withSign(k, v='') {
+    const abs = Math.abs(k);
+    const t = v==='' ? `${abs}` : abs===1 ? v : `${abs}${v}`;
+    return k >= 0 ? `+ ${t}` : `- ${t}`;
+  }
+
+  const RED  = s => `\\textcolor{#c0392b}{${s}}`;
+  const BLUE = s => `\\textcolor{#2a6496}{${s}}`;
+
+  function resTerm(coef, v) {
+    if (coef === 0)  return null;
+    if (coef === 1)  return v;
+    if (coef === -1) return `-${v}`;
+    return `${coef}${v}`;
+  }
+
+  function finalLine(resA, resB) {
+    if (!resA && !resB) return '0';
+    if (!resA) return resB;
+    if (!resB) return resA;
+    const bNeg = resB.startsWith('-');
+    return bNeg ? `${resA} - ${resB.slice(1)}` : `${resA} + ${resB}`;
+  }
+
+  function aligned(lines) {
+    return `$$\\begin{aligned}\n${lines.map(l => `  & ${l}`).join(' \\\\[4pt]\n')}\n\\end{aligned}$$`;
+  }
+
+  // ── TYPE 1 ────────────────────────────────────────────────────────────────
+  if (type === 1) {
+    const v = pick(['a','b','n','x','y']);
+    const has3 = pick([true,false]);
+    const k1=rk(), k2=rk(), k3=rk();
+    const op1=pick(['+','-']), op2=pick(['+','-']);
+    const s2 = op1==='+' ? k2 : -k2;
+    const s3 = op2==='+' ? k3 : -k3;
+
+    let expr, coef;
+    if (has3) {
+      coef = k1 + s2 + s3;
+      expr = `${terme(k1,v)} ${op1} ${terme(k2,v)} ${op2} ${terme(k3,v)}`;
+    } else {
+      coef = k1 + s2;
+      expr = `${terme(k1,v)} ${op1} ${terme(k2,v)}`;
+    }
+    const res = resTerm(coef, v) || '0';
+    return {
+      question: `Réduire l'expression :\n\n$$${expr}$$`,
+      correction: `Les termes sont de même famille, on calcule directement :\n\n${aligned([`= ${expr}`, `= ${res}`])}`
+    };
+  }
+
+  // ── TYPE 2 ────────────────────────────────────────────────────────────────
+  if (type === 2) {
+    const v = pick(['a','b','n','x','y']);
+    const k1=rk(), k2=rk(), k3=rk();
+    const op1=pick(['+','-']), op2=pick(['+','-']);
+    const s1=k1, s2=op1==='+' ? k2:-k2, s3=op2==='+' ? k3:-k3;
+
+    // Ratio 45:45:10 — arr2 (ka op k op ka) et arr3 (k op ka op ka) plus fréquents
+    const r2 = Math.random();
+    const arr = r2 < 0.45 ? 2 : r2 < 0.90 ? 3 : 1;
+
+    let expr, coefV, cst;
+    if (arr===1) {
+      // kv op kv op k  (déjà regroupé — 10%)
+      coefV=s1+s2; cst=s3;
+      expr=`${terme(k1,v)} ${op1} ${terme(k2,v)} ${op2} ${k3}`;
+    } else if (arr===2) {
+      // kv op k op kv  (mélangé — 45%)
+      coefV=s1+s3; cst=s2;
+      expr=`${terme(k1,v)} ${op1} ${k2} ${op2} ${terme(k3,v)}`;
+    } else {
+      // k op kv op kv  (mélangé — 45%)
+      coefV=s2+s3; cst=s1;
+      expr=`${k1} ${op1} ${terme(k2,v)} ${op2} ${terme(k3,v)}`;
+    }
+
+    // Ligne 1 : expression colorée telle quelle
+    let line1;
+    if (arr===1) {
+      line1=`${RED(terme(k1,v))} ${RED(withSign(s2,v))} ${BLUE(withSign(s3,''))}`;
+    } else if (arr===2) {
+      line1=`${RED(terme(k1,v))} ${BLUE(withSign(s2,''))} ${RED(withSign(s3,v))}`;
+    } else {
+      line1=`${BLUE(terme(k1,''))} ${RED(withSign(s2,v))} ${RED(withSign(s3,v))}`;
+    }
+
+    // Ligne 2 : réarrangée — termes en v d'abord, puis constante
+    let line2;
+    if (arr===1) {
+      line2=`${RED(terme(k1,v))} ${RED(withSign(s2,v))} ${BLUE(withSign(s3,''))}`;
+    } else if (arr===2) {
+      line2=`${RED(terme(k1,v))} ${RED(withSign(s3,v))} ${BLUE(withSign(s2,''))}`;
+    } else {
+      const v1 = s2<0 ? RED(`-${terme(Math.abs(s2),v)}`) : RED(terme(s2,v));
+      line2=`${v1} ${RED(withSign(s3,v))} ${BLUE(withSign(s1,''))}`;
+    }
+
+    const resV = resTerm(coefV, v);
+    const resC = cst;
+    let resStr;
+    if (!resV) resStr = `${resC}`;
+    else if (resC===0) resStr = resV;
+    else resStr = resC>0 ? `${resV} + ${resC}` : `${resV} - ${Math.abs(resC)}`;
+
+    // Si arr===1, les deux premières lignes sont identiques → on n'affiche pas la ligne de réarrangement
+    const lines = arr===1
+      ? [`= ${line1}`, `= ${resStr}`]
+      : [`= ${line1}`, `= ${line2}`, `= ${resStr}`];
+
+    return {
+      question: `Réduire l'expression :\n\n$$${expr}$$`,
+      correction: `On identifie les termes de même famille, puis on les regroupe :\n\n${aligned(lines)}`
+    };
+  }
+
+  // ── TYPE 3 ────────────────────────────────────────────────────────────────
+  if (type === 3) {
+    const [va, vb] = pick([['a','b'],['x','y']]);
+    const k1=rk(), k2=rk(), k3=rk();
+    const op1=pick(['+','-']), op2=pick(['+','-']);
+    const s1=k1, s2=op1==='+' ? k2:-k2, s3=op2==='+' ? k3:-k3;
+
+    // Ratio 45:45:10 — arr2 (ka op kb op ka) et arr3 (kb op ka op ka) plus fréquents
+    const r3 = Math.random();
+    const arr = r3 < 0.45 ? 2 : r3 < 0.90 ? 3 : 1;
+
+    let expr, coefA, coefB;
+    if (arr===1) {
+      // ka op ka op kb  (déjà regroupé — 10%)
+      coefA=s1+s2; coefB=s3;
+      expr=`${terme(k1,va)} ${op1} ${terme(k2,va)} ${op2} ${terme(k3,vb)}`;
+    } else if (arr===2) {
+      // ka op kb op ka  (mélangé — 45%)
+      coefA=s1+s3; coefB=s2;
+      expr=`${terme(k1,va)} ${op1} ${terme(k2,vb)} ${op2} ${terme(k3,va)}`;
+    } else {
+      // kb op ka op ka  (mélangé — 45%)
+      coefA=s2+s3; coefB=s1;
+      expr=`${terme(k1,vb)} ${op1} ${terme(k2,va)} ${op2} ${terme(k3,va)}`;
+    }
+
+    // Ligne 1 : expression colorée telle quelle
+    let line1;
+    if (arr===1) {
+      line1=`${RED(terme(k1,va))} ${RED(withSign(s2,va))} ${BLUE(withSign(s3,vb))}`;
+    } else if (arr===2) {
+      line1=`${RED(terme(k1,va))} ${BLUE(withSign(s2,vb))} ${RED(withSign(s3,va))}`;
+    } else {
+      line1=`${BLUE(terme(k1,vb))} ${RED(withSign(s2,va))} ${RED(withSign(s3,va))}`;
+    }
+
+    // Ligne 2 : réarrangée — termes en va d'abord, puis vb
+    let line2;
+    if (arr===1) {
+      line2=`${RED(terme(k1,va))} ${RED(withSign(s2,va))} ${BLUE(withSign(s3,vb))}`;
+    } else if (arr===2) {
+      line2=`${RED(terme(k1,va))} ${RED(withSign(s3,va))} ${BLUE(withSign(s2,vb))}`;
+    } else {
+      const a1 = s2<0 ? RED(`-${terme(Math.abs(s2),va)}`) : RED(terme(s2,va));
+      const bSign = s1>=0 ? `+ ${terme(k1,vb)}` : `- ${terme(k1,vb)}`;
+      line2=`${a1} ${RED(withSign(s3,va))} ${BLUE(bSign)}`;
+    }
+
+    const resA = resTerm(coefA, va);
+    const resB = resTerm(coefB, vb);
+    const res  = finalLine(resA, resB);
+
+    // Si arr===1, pas besoin de la ligne de réarrangement
+    const lines = arr===1
+      ? [`= ${line1}`, `= ${res}`]
+      : [`= ${line1}`, `= ${line2}`, `= ${res}`];
+
+    return {
+      question: `Réduire l'expression :\n\n$$${expr}$$`,
+      correction: `On identifie les termes de même famille, puis on les regroupe :\n\n${aligned(lines)}`
+    };
+  }
+
+  // ── TYPE 4 ────────────────────────────────────────────────────────────────
+  const [va, vb] = pick([['a','b'],['x','y']]);
+  const k1=rk(), k2=rk(), k3=rk(), k4=rk();
+  const op1=pick(['+','-']), op2=pick(['+','-']), op3=pick(['+','-']);
+  const s1=k1, s2=op1==='+' ? k2:-k2, s3=op2==='+' ? k3:-k3, s4=op3==='+' ? k4:-k4;
+
+  const r4 = Math.random();
+  const arr = r4 < 0.4 ? 1 : r4 < 0.8 ? 3 : 2;
+
+  let expr, coefA, coefB;
+  if (arr===1) {
+    coefA=s1+s3; coefB=s2+s4;
+    expr=`${terme(k1,va)} ${op1} ${terme(k2,vb)} ${op2} ${terme(k3,va)} ${op3} ${terme(k4,vb)}`;
+  } else if (arr===2) {
+    coefA=s1+s2; coefB=s3+s4;
+    expr=`${terme(k1,va)} ${op1} ${terme(k2,va)} ${op2} ${terme(k3,vb)} ${op3} ${terme(k4,vb)}`;
+  } else {
+    coefA=s2+s4; coefB=s1+s3;
+    expr=`${terme(k1,vb)} ${op1} ${terme(k2,va)} ${op2} ${terme(k3,vb)} ${op3} ${terme(k4,va)}`;
+  }
+
+  let line1;
+  if (arr===1) {
+    line1=`${RED(terme(k1,va))} ${BLUE(withSign(s2,vb))} ${RED(withSign(s3,va))} ${BLUE(withSign(s4,vb))}`;
+  } else if (arr===2) {
+    line1=`${RED(terme(k1,va))} ${RED(withSign(s2,va))} ${BLUE(withSign(s3,vb))} ${BLUE(withSign(s4,vb))}`;
+  } else {
+    line1=`${BLUE(terme(k1,vb))} ${RED(withSign(s2,va))} ${BLUE(withSign(s3,vb))} ${RED(withSign(s4,va))}`;
+  }
+
+  let line2;
+  if (arr===1) {
+    line2=`${RED(terme(k1,va))} ${RED(withSign(s3,va))} ${BLUE(withSign(s2,vb))} ${BLUE(withSign(s4,vb))}`;
+  } else if (arr===2) {
+    line2=`${RED(terme(k1,va))} ${RED(withSign(s2,va))} ${BLUE(withSign(s3,vb))} ${BLUE(withSign(s4,vb))}`;
+  } else {
+    const a1 = s2<0 ? RED(`-${terme(Math.abs(s2),va)}`) : RED(terme(s2,va));
+    const bFirst = s1>=0 ? `+ ${terme(k1,vb)}` : `- ${terme(k1,vb)}`;
+    line2=`${a1} ${RED(withSign(s4,va))} ${BLUE(bFirst)} ${BLUE(withSign(s3,vb))}`;
+  }
+
+  const resA = resTerm(coefA, va);
+  const resB = resTerm(coefB, vb);
+  const res  = finalLine(resA, resB);
+
+  // Si arr===2 (déjà en ordre), pas besoin de ligne de réarrangement
+  const lines4 = arr===2
+    ? [`= ${line1}`, `= ${res}`]
+    : [`= ${line1}`, `= ${line2}`, `= ${res}`];
+
+  return {
+    question: `Réduire l'expression :\n\n$$${expr}$$`,
+    correction: `On identifie les termes de même famille, puis on les regroupe :\n\n${aligned(lines4)}`
+  };
 };
 
 G[95] = () => {
