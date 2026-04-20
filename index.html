@@ -224,7 +224,7 @@ function renderContent(rawText, el) {
 function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
 function pick(arr)  { return arr[Math.floor(Math.random() * arr.length)]; }
 function shuffle(a) { const b=[...a]; for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];} return b; }
-function frac(n, d) { return `\\frac{${n}}{${d}}`; }
+function frac(n, d) { return `\\dfrac{${n}}{${d}}`; }
 function pgcd(a, b) { a=Math.abs(a); b=Math.abs(b); while(b){[a,b]=[b,a%b];} return a; }
 function simplFrac(n, d) { const g=pgcd(n,d); return g>1 ? frac(n/g,d/g) : frac(n,d); }
 function ppcm(a, b) { return (a*b)/pgcd(a,b); }
@@ -236,50 +236,290 @@ const G = {};
 
 // ── SÉQUENCE 1 : Règles de calcul ────────────────────────────────────────────
 G[11] = () => {
-  const a=rand(2,20), b=rand(2,20), c=rand(2,10);
-  const type = pick(['+','-','×']);
-  let expr, res, steps;
-  if(type==='+') {
-    expr=`${a} + ${b} + ${c}`; res=a+b+c;
-    steps=`$${a} + ${b} + ${c} = ${a+b} + ${c} = ${res}$`;
-  } else if(type==='-') {
-    const big=a+b+c; expr=`${big} - ${b} - ${c}`; res=a;
-    steps=`$${big} - ${b} - ${c} = ${big-b} - ${c} = ${res}$`;
-  } else {
-    expr=`${a} \\times ${b} \\times ${c}`; res=a*b*c;
-    steps=`$${a} \\times ${b} \\times ${c} = ${a*b} \\times ${c} = ${res}$`;
+  const opType = pick(['+', '+', '-', '-', '*']); // 40% +, 40% -, 20% ×
+  const n = pick([3, 4]); // 3 ou 4 termes, 50-50
+
+  let terms, expr, steps;
+
+  if (opType === '+') {
+    terms = Array.from({length: n}, () => rand(2, 20));
+    expr = terms.join(' + ');
+    steps = [];
+    let running = terms[0];
+    for (let i = 1; i < terms.length; i++) {
+      running += terms[i];
+      const remaining = terms.slice(i + 1).join(' + ');
+      steps.push(running + (remaining ? ' + ' + remaining : ''));
+    }
   }
+
+  else if (opType === '-') {
+    terms = [rand(2, 20)];
+    for (let i = 1; i < n; i++) {
+      const current = terms.reduce((acc, v, idx) => idx === 0 ? v : acc - v, 0);
+      terms.push(rand(1, Math.max(1, current - 1)));
+    }
+    expr = terms.join(' - ');
+    steps = [];
+    let running = terms[0];
+    for (let i = 1; i < terms.length; i++) {
+      running -= terms[i];
+      const remaining = terms.slice(i + 1).join(' - ');
+      steps.push(running + (remaining ? ' - ' + remaining : ''));
+    }
+  }
+
+  else {
+    terms = [rand(2, 9)];
+    for (let i = 1; i < n; i++) {
+      const current = terms.reduce((a, b) => a * b, 1);
+      const maxFactor = Math.min(9, Math.floor(999 / current));
+      if (maxFactor < 2) { terms.push(2); break; }
+      terms.push(rand(2, maxFactor));
+    }
+    expr = terms.join(' \\times ');
+    steps = [];
+    let running = terms[0];
+    for (let i = 1; i < terms.length; i++) {
+      running *= terms[i];
+      const remaining = terms.slice(i + 1).join(' \\times ');
+      steps.push(running + (remaining ? ' \\times ' + remaining : ''));
+    }
+  }
+
+  const op = opType === '+' ? ' + ' : opType === '-' ? ' - ' : ' \\times ';
+  const alignedSteps = `$$\\begin{aligned}\nA &= ${expr} \\\\[3pt]\n${steps.map(s => `&= ${s}`).join(' \\\\[3pt]\n')}\n\\end{aligned}$$`;
+
   return {
-    question: `Calcule $${expr}$.`,
-    correction: `**Calcul :**\n\n${steps}\n\nRésultat : $${res}$`
+    question: `Calculer :\n\n$$A = ${expr}$$`,
+    correction: `On calcule de gauche à droite :\n\n${alignedSteps}`
   };
 };
 
 G[12] = () => {
-  const a=rand(2,9), b=rand(2,9), c=rand(1,8), d=rand(2,6);
-  const variants = [
-    { e:`${a} + ${b} \\times ${c}`, r:a+b*c,   s:`$${b} \\times ${c} = ${b*c}$, puis $${a} + ${b*c} = ${a+b*c}$` },
-    { e:`${a} \\times ${b} + ${c}`, r:a*b+c,   s:`$${a} \\times ${b} = ${a*b}$, puis $${a*b} + ${c} = ${a*b+c}$` },
-    { e:`${a} \\times ${b} - ${c} + ${d}`, r:a*b-c+d, s:`$${a} \\times ${b} = ${a*b}$, puis $${a*b} - ${c} + ${d} = ${a*b-c+d}$` },
-  ];
-  const v = pick(variants);
+  const type = pick([1, 2, 3, 4, 5]);
+
+  let expr, steps;
+
+  if (type === 1) {
+    // a × b ± c
+    const a = rand(2,9), b = rand(2,9);
+    const prod = a * b;
+    const op = pick(['+', '-']);
+    // Pour '-' : c < prod et résultat > 0 ; pour '+' : prod + c <= 29
+    const c = op === '-'
+      ? rand(1, Math.min(prod - 1, 28))
+      : rand(1, Math.max(1, 29 - prod));
+    const res = op === '+' ? prod + c : prod - c;
+    expr = `${a} \\times ${b} ${op} ${c}`;
+    steps = [`${prod} ${op} ${c}`, `${res}`];
+  }
+
+  else if (type === 2) {
+    // a ± b × c
+    // On choisit b, c petits pour que prod reste raisonnable
+    const b = rand(2,6), c = rand(2,6);
+    const prod = b * c;
+    const op = pick(['+', '-']);
+    // Pour '-' : a > prod ; pour '+' : a + prod <= 29
+    const a = op === '-'
+      ? rand(prod + 1, Math.min(prod + 10, 29))
+      : rand(1, Math.max(1, 29 - prod));
+    const res = op === '+' ? a + prod : a - prod;
+    expr = `${a} ${op} ${b} \\times ${c}`;
+    steps = [`${a} ${op} ${prod}`, `${res}`];
+  }
+
+  else if (type === 3) {
+    // a ± b × c ± d
+    const b = rand(2,5), c = rand(2,5);
+    const prod = b * c;
+    const op1 = pick(['+', '-']);
+    const op2 = pick(['+', '-']);
+    // Choisir a selon op1 pour que a op1 prod soit dans [1,29]
+    const a = op1 === '-'
+      ? rand(prod + 1, Math.min(prod + 10, 29))
+      : rand(1, Math.max(1, 29 - prod));
+    const afterMul = op1 === '+' ? a + prod : a - prod;
+    // Choisir d selon op2 pour que afterMul op2 d soit dans [1,29]
+    const d = op2 === '-'
+      ? rand(1, Math.min(afterMul - 1, 28))
+      : rand(1, Math.max(1, 29 - afterMul));
+    const res = op2 === '+' ? afterMul + d : afterMul - d;
+    expr = `${a} ${op1} ${b} \\times ${c} ${op2} ${d}`;
+    steps = [
+      `${a} ${op1} ${prod} ${op2} ${d}`,
+      `${afterMul} ${op2} ${d}`,
+      `${res}`
+    ];
+  }
+
+  else if (type === 4) {
+    // a ± b ± c × d
+    const c = rand(2,5), d = rand(2,5);
+    const prod = c * d;
+    const op1 = pick(['+', '-']);
+    const op2 = pick(['+', '-']);
+    // Choisir a et b pour que a op1 b soit dans [1,29]
+    const a = rand(2, 20);
+    const b = op1 === '-'
+      ? rand(1, a - 1)
+      : rand(1, Math.max(1, 29 - a));
+    const afterOp1 = op1 === '+' ? a + b : a - b;
+    // Choisir op2 pour que afterOp1 op2 prod soit dans [1,29]
+    const op2Final = afterOp1 <= prod ? '+' : op2;
+    const res = op2Final === '+' ? afterOp1 + prod : afterOp1 - prod;
+    expr = `${a} ${op1} ${b} ${op2Final} ${c} \\times ${d}`;
+    steps = [
+      `${a} ${op1} ${b} ${op2Final} ${prod}`,
+      `${afterOp1} ${op2Final} ${prod}`,
+      `${res}`
+    ];
+  }
+
+  else {
+    // a × b ± c ± d
+    const a = rand(2,6), b = rand(2,6);
+    const prod = a * b;
+    const op1 = pick(['+', '-']);
+    // Choisir c pour que prod op1 c soit dans [1,29]
+    const c = op1 === '-'
+      ? rand(1, Math.min(prod - 1, 28))
+      : rand(1, Math.max(1, 29 - prod));
+    const afterOp1 = op1 === '+' ? prod + c : prod - c;
+    const op2 = pick(['+', '-']);
+    // Choisir d pour que afterOp1 op2 d soit dans [1,29]
+    const d = op2 === '-'
+      ? rand(1, Math.min(afterOp1 - 1, 28))
+      : rand(1, Math.max(1, 29 - afterOp1));
+    const res = op2 === '+' ? afterOp1 + d : afterOp1 - d;
+    expr = `${a} \\times ${b} ${op1} ${c} ${op2} ${d}`;
+    steps = [
+      `${prod} ${op1} ${c} ${op2} ${d}`,
+      `${afterOp1} ${op2} ${d}`,
+      `${res}`
+    ];
+  }
+
+  const alignedSteps = `$$\\begin{aligned}\nA &= ${expr} \\\\[3pt]\n${steps.map(s => `&= ${s}`).join(' \\\\[3pt]\n')}\n\\end{aligned}$$`;
+
   return {
-    question: `Calcule $${v.e}$.\n\n*(Rappel : la multiplication est prioritaire)*`,
-    correction: `**Règle :** on effectue d'abord la multiplication.\n\n${v.s}\n\nRésultat : $${v.r}$`
+    question: `Calculer :\n\n$$A = ${expr}$$`,
+    correction: `On commence par la multiplication, qui est prioritaire sur l'addition et la soustraction :\n\n${alignedSteps}`
   };
 };
 
 G[13] = () => {
-  const a=rand(2,9), b=rand(1,8), c=rand(2,7);
-  const variants = [
-    { e:`(${a} + ${b}) \\times ${c}`, r:(a+b)*c, s:`Parenthèses d'abord : $${a}+${b}=${a+b}$, puis $${a+b} \\times ${c} = ${(a+b)*c}$` },
-    { e:`${a} \\times (${b} + ${c})`, r:a*(b+c), s:`Parenthèses d'abord : $${b}+${c}=${b+c}$, puis $${a} \\times ${b+c} = ${a*(b+c)}$` },
-    { e:`(${a+b} - ${b}) \\times ${c}`, r:a*c,   s:`Parenthèses d'abord : $${a+b}-${b}=${a}$, puis $${a} \\times ${c} = ${a*c}$` },
-  ];
-  const v = pick(variants);
+  const type = pick([1, 2, 3, 4, 5]);
+
+  let expr, steps;
+
+  if (type === 1) {
+    // (a ± b) × c
+    const c = rand(2,9);
+    const op = pick(['+', '-']);
+    const a = rand(2, 20);
+    const b = op === '-'
+      ? rand(1, a - 1)
+      : rand(1, Math.max(1, 29 - a));
+    const inner = op === '+' ? a + b : a - b;
+    // inner × c <= 29
+    const cFinal = rand(2, Math.max(2, Math.floor(29 / inner)));
+    const res = inner * cFinal;
+    expr = `(${a} ${op} ${b}) \\times ${cFinal}`;
+    steps = [`${inner} \\times ${cFinal}`, `${res}`];
+  }
+
+  else if (type === 2) {
+    // a × (b ± c)
+    const op = pick(['+', '-']);
+    const b = rand(2, 20);
+    const c = op === '-'
+      ? rand(1, b - 1)
+      : rand(1, Math.max(1, 29 - b));
+    const inner = op === '+' ? b + c : b - c;
+    // a × inner <= 29
+    const a = rand(2, Math.max(2, Math.floor(29 / inner)));
+    const res = a * inner;
+    expr = `${a} \\times (${b} ${op} ${c})`;
+    steps = [`${a} \\times ${inner}`, `${res}`];
+  }
+
+  else if (type === 3) {
+    // a × b ± (c ± d)  — parenthèses sur la 2e addition/soustraction
+    const a = rand(2,5), b = rand(2,5);
+    const prod = a * b;
+    const op1 = pick(['+', '-']);
+    const op2 = pick(['+', '-']);
+    const c = rand(2, 15);
+    const d = op2 === '-'
+      ? rand(1, c - 1)
+      : rand(1, Math.max(1, 29 - c));
+    const inner = op2 === '+' ? c + d : c - d;
+    // prod op1 inner dans [1,29]
+    const res = op1 === '+'
+      ? prod + inner
+      : prod - inner;
+    if (res <= 0) return G[13](); // retry si négatif
+    expr = `${a} \\times ${b} ${op1} (${c} ${op2} ${d})`;
+    steps = [
+      `${a} \\times ${b} ${op1} ${inner}`,
+      `${prod} ${op1} ${inner}`,
+      `${res}`
+    ];
+  }
+
+  else if (type === 4) {
+    // (a ± b) ± c × d  — parenthèses sur la 1re addition/soustraction
+    const c = rand(2,5), d = rand(2,5);
+    const prod = c * d;
+    const op1 = pick(['+', '-']);
+    const op2 = pick(['+', '-']);
+    const a = rand(2, 20);
+    const b = op1 === '-'
+      ? rand(1, a - 1)
+      : rand(1, Math.max(1, 29 - a));
+    const inner = op1 === '+' ? a + b : a - b;
+    // inner op2 prod dans [1,29]
+    const op2Final = inner <= prod ? '+' : op2;
+    const res = op2Final === '+' ? inner + prod : inner - prod;
+    expr = `(${a} ${op1} ${b}) ${op2Final} ${c} \\times ${d}`;
+    steps = [
+      `${inner} ${op2Final} ${c} \\times ${d}`,
+      `${inner} ${op2Final} ${prod}`,
+      `${res}`
+    ];
+  }
+
+  else {
+    // (a ± b) × c ± d  — parenthèses sur la 1re addition/soustraction
+    const op1 = pick(['+', '-']);
+    const op2 = pick(['+', '-']);
+    const a = rand(2, 15);
+    const b = op1 === '-'
+      ? rand(1, a - 1)
+      : rand(1, Math.max(1, 29 - a));
+    const inner = op1 === '+' ? a + b : a - b;
+    // inner × c <= 29
+    const c = rand(2, Math.max(2, Math.floor(29 / inner)));
+    const prod = inner * c;
+    const d = op2 === '-'
+      ? rand(1, Math.min(prod - 1, 28))
+      : rand(1, Math.max(1, 29 - prod));
+    const res = op2 === '+' ? prod + d : prod - d;
+    expr = `(${a} ${op1} ${b}) \\times ${c} ${op2} ${d}`;
+    steps = [
+      `${inner} \\times ${c} ${op2} ${d}`,
+      `${prod} ${op2} ${d}`,
+      `${res}`
+    ];
+  }
+
+  const alignedSteps = `$$\\begin{aligned}\nA &= ${expr} \\\\[3pt]\n${steps.map(s => `&= ${s}`).join(' \\\\[3pt]\n')}\n\\end{aligned}$$`;
+
   return {
-    question: `Calcule $${v.e}$.`,
-    correction: `**Règle :** on commence par les parenthèses.\n\n${v.s}\n\nRésultat : $${v.r}$`
+    question: `Calculer :\n\n$$A = ${expr}$$`,
+    correction: `On commence par les parenthèses, puis les multiplications, puis les additions/soustractions :\n\n${alignedSteps}`
   };
 };
 
@@ -331,11 +571,11 @@ G[16] = () => {
 
 // ── SÉQUENCE 2 : Nombres relatifs et repérage ─────────────────────────────────
 G[21] = () => {
-  const n = rand(-15,15);
+  const n = rand(-19, 19);
   const opp = -n;
   return {
-    question: `Donne l'opposé du nombre $${n}$.`,
-    correction: `L'opposé de $${n}$ est $${opp}$.\n\n*Rappel : l'opposé de $a$ est $-a$. La somme d'un nombre et de son opposé vaut $0$.*`
+    question: `Donner l'opposé du nombre :\n\n$$${n}$$`,
+    correction: `L'opposé du nombre $${n}$ est $${opp}$`
   };
 };
 
@@ -348,11 +588,37 @@ G[22] = () => {
 };
 
 G[23] = () => {
-  const a=rand(-10,10), b=rand(-10,10);
-  const [min,max] = a<b ? [a,b] : [b,a];
+  const units = rand(0, 9); // chiffre des unités (toujours >= 1 pour éviter -0)
+
+  const makeNum = (sign) => {
+    const dec = rand(0, 9);
+    const base = units + dec / 10;
+    return sign * base;
+  };
+
+  let a, b;
+  const r = Math.random();
+  if (r < 0.2) {
+    // 20% : deux positifs
+    a = makeNum(1); b = makeNum(1);
+  } else if (r < 0.6) {
+    // 40% : un positif, un négatif
+    [a, b] = pick([[makeNum(1), makeNum(-1)], [makeNum(-1), makeNum(1)]]);
+  } else {
+    // 40% : deux négatifs
+    a = makeNum(-1); b = makeNum(-1);
+  }
+
+  while (a === b) { b = makeNum(a > 0 ? 1 : -1); }
+
+  const fmt = n => Number.isInteger(n) ? `${n}` : `${n.toFixed(1).replace('.', '{,}')}`;
+
+  const fa = fmt(a), fb = fmt(b);
+  const symbol = a < b ? '<' : '>';
+
   return {
-    question: `Compare $${a}$ et $${b}$ avec $<$ ou $>$.`,
-    correction: `$${min} < ${max}$\n\n*Sur la droite graduée, $${min}$ est à gauche de $${max}$, donc $${min}$ est plus petit.*`
+    question: `Comparer :\n\n$$${fa} \\quad\\text{et}\\quad ${fb}$$`,
+    correction: `$$${fa} ${symbol} ${fb}$$`
   };
 };
 
@@ -361,8 +627,10 @@ G[24] = () => {
   const coords = pts.map(()=>[rand(-4,4),rand(-4,4)]);
   const desc = pts.map((p,i)=>`$${p}$ : ${coords[i][0]} vers la ${coords[i][0]>=0?'droite':'gauche'} et ${Math.abs(coords[i][1])} vers le ${coords[i][1]>=0?'haut':'bas'}`).join(' ; ');
   return {
-    question: `Dans un repère $(O;I;J)$, un point est décrit par sa position. ${pts.map((p,i)=>`$${p}$ est à $${Math.abs(coords[i][0])}$ unité(s) vers la ${coords[i][0]>=0?'droite':'gauche'} et $${Math.abs(coords[i][1])}$ vers le ${coords[i][1]>=0?'haut':'bas'}`).join(' ; ')}. Donne les coordonnées de chaque point.`,
-    correction: pts.map((p,i)=>`$${p}(${coords[i][0]}\\,;\\,${coords[i][1]})$`).join(', ') + '\n\n*La première coordonnée est l\'abscisse (axe horizontal), la deuxième l\'ordonnée (axe vertical).*'
+    // question: `Dans un repère $(O;I;J)$, un point est décrit par sa position. ${pts.map((p,i)=>`$${p}$ est à $${Math.abs(coords[i][0])}$ unité(s) vers la ${coords[i][0]>=0?'droite':'gauche'} et $${Math.abs(coords[i][1])}$ vers le ${coords[i][1]>=0?'haut':'bas'}`).join(' ; ')}. Donne les coordonnées de chaque point.`,
+    // correction: pts.map((p,i)=>`$${p}(${coords[i][0]}\\,;\\,${coords[i][1]})$`).join(', ') + '\n\n*La première coordonnée est l\'abscisse (axe horizontal), la deuxième l\'ordonnée (axe vertical).*'
+    question: `En cours de construction ...`,
+    correction: ``
   };
 };
 
@@ -370,8 +638,10 @@ G[25] = () => {
   const pts = ['A','B','C'];
   const coords = pts.map(()=>[rand(-4,4),rand(-4,4)]);
   return {
-    question: `Place les points suivants dans un repère $(O;I;J)$ : ${pts.map((p,i)=>`$${p}(${coords[i][0]}\\,;\\,${coords[i][1]})$`).join(', ')}.`,
-    correction: `Pour placer un point $M(x\\,;\\,y)$ :\n- On part de $O$\n- On avance de $x$ unités sur l'axe horizontal ($x>0$ : droite, $x<0$ : gauche)\n- On avance de $y$ unités sur l'axe vertical ($y>0$ : haut, $y<0$ : bas)\n\n${pts.map((p,i)=>`**$${p}(${coords[i][0]}\\,;\\,${coords[i][1]})$** : ${coords[i][0]>=0?'droite':'gauche'} de $${Math.abs(coords[i][0])}$, ${coords[i][1]>=0?'haut':'bas'} de $${Math.abs(coords[i][1])}$`).join('\n')}`
+    // question: `Place les points suivants dans un repère $(O;I;J)$ : ${pts.map((p,i)=>`$${p}(${coords[i][0]}\\,;\\,${coords[i][1]})$`).join(', ')}.`,
+    // correction: `Pour placer un point $M(x\\,;\\,y)$ :\n- On part de $O$\n- On avance de $x$ unités sur l'axe horizontal ($x>0$ : droite, $x<0$ : gauche)\n- On avance de $y$ unités sur l'axe vertical ($y>0$ : haut, $y<0$ : bas)\n\n${pts.map((p,i)=>`**$${p}(${coords[i][0]}\\,;\\,${coords[i][1]})$** : ${coords[i][0]>=0?'droite':'gauche'} de $${Math.abs(coords[i][0])}$, ${coords[i][1]>=0?'haut':'bas'} de $${Math.abs(coords[i][1])}$`).join('\n')}`
+    question: `En cours de construction ...`,
+    correction: ``
   };
 };
 
@@ -394,31 +664,128 @@ G[32] = () => {
 };
 
 G[33] = () => {
-  const d=pick([3,4,5,6,8,10]), total=d*rand(2,5);
-  const n=rand(1,d-1);
-  const taken=total/d*n;
-  const items=pick(['bonbons','élèves','billes','stylos','cartes']);
+  const type = pick([1, 2]);
+
+  const b = pick([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  const coprimes = [];
+  for (let i = 1; i < b; i++) { if (pgcd(i, b) === 1) coprimes.push(i); }
+  const a = pick(coprimes);
+
+  // 30% : n petit (entre 2 et b-1, mais multiple de b impossible → on prend b comme minimum)
+  // En fait pour que résultat soit entier, n doit être multiple de b
+  // Catégorie A (30%) : n petit = b lui-même ou 2b (n <= 2*b, donc <= 24)
+  // Catégorie B (70%) : n plus grand (3b à floor(99/b)*b)
+  let n, method;
+  const r = Math.random();
+
+  if (r < 0.30) {
+    // Catégorie A : n petit, a×n restera raisonnable → méthode aléatoire
+    const multSmall = pick([1, 2]);
+    n = b * multSmall;
+    method = pick(['nd', 'an']);
+  } else {
+    // Catégorie B : n plus grand
+    const maxMult = Math.floor(99 / b);
+    const mult = rand(3, Math.max(3, maxMult));
+    n = b * mult;
+    method = (a * n > 30) ? 'nd' : pick(['nd', 'an']);
+  }
+
+  const res = a * n / b;
+
+  let expr;
+  if (type === 1) {
+    expr = `${frac(a, b)} \\times ${n}`;
+  } else {
+    expr = `${n} \\times ${frac(a, b)}`;
+  }
+
+  let correction;
+  if (method === 'nd') {
+    correction = `$$${frac(a,b)} \\times ${n} = ${a} \\times ${frac(n,b)} = ${a} \\times ${n/b} = ${res}$$`;
+  } else {
+    correction = `$$${frac(a,b)} \\times ${n} = ${frac(`${a} \\times ${n}`,b)} = ${frac(a*n, b)} = ${res}$$`;
+  }
+
   return {
-    question: `Une boîte contient $${total}$ ${items}. On en prend $${taken}$. Quelle fraction de la boîte a-t-on prise ?`,
-    correction: `On a pris $${frac(taken,total)}$ de la boîte.\n\nOn simplifie : $${frac(taken,total)} = ${simplFrac(taken,total)}$\n\n*On divise numérateur et dénominateur par $${pgcd(taken,total)}$.*`
+    question: `Calculer :\n\n$$${expr}$$`,
+    correction
   };
 };
 
 G[34] = () => {
-  const d=pick([2,3,4,5,6]), n=rand(1,d-1);
-  const m1=rand(2,4), m2=m1+rand(1,2);
+  const b = rand(2, 10);
+  const coprimes = [];
+  for (let i = 1; i < b; i++) { if (pgcd(i, b) === 1) coprimes.push(i); }
+  const a = pick(coprimes);
+
+  const maxN = Math.floor(99 / Math.max(a, b));
+  const n = rand(2, Math.max(2, maxN));
+
+  const c = a * n, d = b * n;
+
+  const swapped = pick([true, false]);
+  const [f1n, f1d, f2n, f2d] = swapped ? [c, d, a, b] : [a, b, c, d];
+
+  const missing = pick([0, 1, 2, 3]);
+  const nums = [f1n, f1d, f2n, f2d];
+
+  const RED = s => `\\textcolor{#c0392b}{${s}}`;
+
+  // Question : nombre manquant remplacé par \ldots
+  const qVals = nums.map((v, i) => i === missing ? `\\ldots` : `${v}`);
+  const question_expr = `${frac(qVals[0], qVals[1])} = ${frac(qVals[2], qVals[3])}`;
+
+  // Correction : une seule ligne, ordre conservé, étape intermédiaire au milieu
+  // L'étape intermédiaire montre la fraction de base avec ×n
+  const corrVals = nums.map((v, i) => i === missing ? RED(`${v}`) : `${v}`);
+
+  let correction_expr;
+  if (!swapped) {
+    // f1=base, f2=grande
+    correction_expr = `${frac(corrVals[0], corrVals[1])} = ${frac(`${f1n} \\times ${n}`, `${f1d} \\times ${n}`)} = ${frac(corrVals[2], corrVals[3])}`;
+  } else {
+    // f1=grande, f2=base
+    correction_expr = `${frac(corrVals[0], corrVals[1])} = ${frac(`${f2n} \\times ${n}`, `${f2d} \\times ${n}`)} = ${frac(corrVals[2], corrVals[3])}`;
+  }
+
   return {
-    question: `Trouve deux fractions égales à $${frac(n,d)}$ en multipliant par $${m1}$, puis par $${m2}$.`,
-    correction: `En multipliant numérateur et dénominateur par $${m1}$ :\n$$${frac(n,d)} = ${frac(n+'\\times'+m1, d+'\\times'+m1)} = ${frac(n*m1,d*m1)}$$\n\nEn multipliant par $${m2}$ :\n$$${frac(n,d)} = ${frac(n+'\\times'+m2, d+'\\times'+m2)} = ${frac(n*m2,d*m2)}$$`
+    question: `Compléter :\n\n$$${question_expr}$$`,
+    correction: `$$${correction_expr}$$`
   };
 };
 
 G[35] = () => {
-  const d=pick([2,3,4,5,6]), n=rand(1,d-1), m=rand(2,6);
-  const g=pgcd(n*m, d*m);
+  // Générer une fraction réductible avec pgcd > 1
+  // Pondération : petits nombres plus fréquents
+  const pickG = () => {
+    const r = Math.random();
+    if (r < 0.5) return rand(2, 6);
+    if (r < 0.8) return rand(7, 12);
+    if (r < 0.95) return rand(13, 16);
+    return rand(17, 20);
+  };
+
+  let n, d, g;
+  do {
+    g = pickG();
+    // Choisir des cofacteurs pour que n et d restent <= 120
+    const maxK = Math.floor(120 / g);
+    const k1 = rand(1, Math.min(maxK, 12));
+    const k2 = rand(1, Math.min(maxK, 12));
+    if (k1 === k2) continue; // éviter n = d
+    n = g * k1;
+    d = g * k2;
+    // Vérifier que le pgcd est bien g (pas un multiple de g)
+  } while (pgcd(n, d) !== g || n === d || n > 120 || d > 120 || d / g === 1);
+
+  const ns = n / g, ds = d / g;
+
+  const correction_expr = `${frac(n, d)} = ${frac(`${ns} \\times ${g}`, `${ds} \\times ${g}`)} = ${frac(ns, ds)}`;
+
   return {
-    question: `Simplifie la fraction $${frac(n*m, d*m)}$.`,
-    correction: `On cherche le PGCD de $${n*m}$ et $${d*m}$ : $PGCD = ${g}$\n\n$$${frac(n*m,d*m)} = ${frac(n*m+'/'+g, d*m+'/'+g)} = ${frac((n*m)/g,(d*m)/g)}$$\n\nLa fraction simplifiée est $${simplFrac(n*m,d*m)}$.`
+    question: `Simplifier :\n\n$$${frac(n, d)}$$`,
+    correction: `On cherche dans quelle table sont présents $${n}$ et $${d}$ :\n\n$$${correction_expr}$$`
   };
 };
 
@@ -426,16 +793,16 @@ G[35] = () => {
 G[41] = () => {
   const a=rand(3,9), b=rand(3,9), c=rand(Math.abs(a-b)+1, a+b-1);
   return {
-    question: `Décris les étapes de construction du triangle $ABC$ avec $AB = ${a}$ cm, $BC = ${b}$ cm et $AC = ${c}$ cm.`,
-    correction: `**Étapes de construction :**\n\n1. Tracer le segment $[AB]$ de longueur $${a}$ cm.\n2. Du point $A$, tracer un arc de cercle de rayon $${c}$ cm.\n3. Du point $B$, tracer un arc de cercle de rayon $${b}$ cm.\n4. Le point $C$ est l'intersection des deux arcs.\n5. Relier $A$, $B$ et $C$.\n\n*Vérification : $${a} + ${b} = ${a+b} > ${c}$, $${a} + ${c} = ${a+c} > ${b}$, $${b} + ${c} = ${b+c} > ${a}$ → triangle constructible.*`
+    question: `Décrire les étapes de construction du triangle $ABC$ avec $AB = ${a}\\,$cm, $BC = ${b}\\,$cm et $AC = ${c}\\,$cm`,
+    correction: `**Étapes de construction :**\n\n1. Tracer le segment $[AB]$ de longueur $${a}$ cm.\n2. Du point $A$, tracer un arc de cercle de rayon $${c}$ cm.\n3. Du point $B$, tracer un arc de cercle de rayon $${b}$ cm.\n4. Le point $C$ est l'intersection des deux arcs.\n5. Relier $A$, $B$ et $C$`
   };
 };
 
 G[42] = () => {
   const a=rand(4,9), b=rand(3,8), angle=pick([30,40,45,50,60,70]);
   return {
-    question: `Décris les étapes de construction du triangle $ABC$ avec $AB = ${a}$ cm, $AC = ${b}$ cm et $\\widehat{BAC} = ${angle}°$.`,
-    correction: `**Étapes de construction :**\n\n1. Tracer le segment $[AB]$ de longueur $${a}$ cm.\n2. En $A$, tracer un angle de $${angle}°$ à l'aide du rapporteur.\n3. Sur le côté de l'angle issu de $A$, placer $C$ à $${b}$ cm de $A$.\n4. Relier $B$ et $C$.`
+    question: `Décrire les étapes de construction du triangle $ABC$ avec $AB = ${a}\\,$cm, $AC = ${b}\\,$cm et $\\widehat{BAC} = ${angle}°$`,
+    correction: `**Étapes de construction :**\n\n1. Tracer le segment $[AB]$ de longueur $${a}$ cm.\n2. En $A$, tracer un angle de $${angle}°$ à l'aide du rapporteur.\n3. Sur le côté de l'angle issu de $A$, placer $C$ à $${b}$ cm de $A$\n4. Relier $B$ et $C$`
   };
 };
 
@@ -444,8 +811,8 @@ G[43] = () => {
   const a3=180-a1-a2;
   const c=rand(4,8);
   return {
-    question: `Décris les étapes de construction du triangle $ABC$ avec $AB = ${c}$ cm, $\\widehat{BAC} = ${a1}°$ et $\\widehat{ABC} = ${a2}°$.`,
-    correction: `**Étapes de construction :**\n\n1. Tracer le segment $[AB]$ de longueur $${c}$ cm.\n2. En $A$, tracer un demi-droite faisant un angle de $${a1}°$ avec $[AB]$.\n3. En $B$, tracer une demi-droite faisant un angle de $${a2}°$ avec $[AB]$.\n4. Le point $C$ est l'intersection des deux demi-droites.\n\n**Angle manquant :** $\\widehat{BCA} = 180° - ${a1}° - ${a2}° = ${a3}°$`
+    question: `Décrire les étapes de construction du triangle $ABC$ avec $AB = ${c}\\,$cm, $\\widehat{BAC} = ${a1}°$ et $\\widehat{ABC} = ${a2}°$`,
+    correction: `**Étapes de construction :**\n\n1. Tracer le segment $[AB]$ de longueur $${c}$ cm.\n2. En $A$, tracer un demi-droite faisant un angle de $${a1}°$ avec $[AB]$\n3. En $B$, tracer une demi-droite faisant un angle de $${a2}°$ avec $[AB]$\n4. Le point $C$ est l'intersection des deux demi-droites.`
   };
 };
 
@@ -486,12 +853,73 @@ G[47] = () => {
 
 // ── SÉQUENCE 5 : Fractions II ─────────────────────────────────────────────────
 G[51] = () => {
-  const d1=pick([2,3,4,5,6]), d2=pick([2,3,4,5,6]);
-  const n1=rand(1,d1), n2=rand(1,d2);
-  const lcd=ppcm(d1,d2);
+  const r = Math.random();
+  const type = r < 0.20 ? 1 : r < 0.60 ? 2 : 3;
+
+  let d1, d2, n1, n2, lcd;
+
+  if (type === 1) {
+    d1 = rand(2, 12);
+    const maxMult = Math.floor(49 / d1);
+    const mult = rand(2, Math.max(2, maxMult));
+    d2 = d1 * mult;
+    lcd = d2;
+    n1 = rand(1, d1 - 1);
+    n2 = rand(1, d2 - 1);
+    while (n1 * mult === n2) { n2 = rand(1, d2 - 1); }
+  }
+
+  else if (type === 2) {
+    // pgcd(d1, d2) = 1 → lcd = d1 * d2
+    do {
+      d1 = rand(2, 12);
+      d2 = rand(2, 12);
+    } while (d1 === d2 || pgcd(d1, d2) !== 1 || d1 * d2 > 120);
+    lcd = d1 * d2;
+    n1 = rand(1, d1 - 1);
+    n2 = rand(1, d2 - 1);
+    while (n1 * d2 === n2 * d1) { n2 = rand(1, d2 - 1); }
+  }
+
+  else {
+    // pgcd(d1, d2) ≠ 1 et d2 pas multiple de d1
+    do {
+      d1 = rand(2, 12);
+      d2 = rand(2, 12);
+    } while (d1 === d2 || pgcd(d1, d2) <= 1 || d2 % d1 === 0 || d1 % d2 === 0);
+    lcd = ppcm(d1, d2);
+    n1 = rand(1, d1 - 1);
+    n2 = rand(1, d2 - 1);
+    while (n1 * (lcd / d1) === n2 * (lcd / d2)) { n2 = rand(1, d2 - 1); }
+  }
+
+  const m1 = lcd / d1;
+  const m2 = lcd / d2;
+
+  // Ordre aléatoire dans la question
+  const swapped = pick([true, false]);
+  const [qa_n, qa_d, qb_n, qb_d, ma, mb] = swapped
+    ? [n2, d2, n1, d1, m2, m1]
+    : [n1, d1, n2, d2, m1, m2];
+
+  const introText = type === 1
+    ? `$${Math.min(qa_d, qb_d)}$ est un multiple de $${Math.max(qa_d, qb_d)}$, on met les deux fractions sur $${lcd}$ :`
+    : `On cherche une table qui contient les deux dénominateurs $${qa_d}$ et $${qb_d}$ :`;
+
+  // Correction pour chaque fraction
+  const corrFrac = (fn, fd, m) => {
+    if (m === 1) {
+      return `${frac(fn, fd)} = ${frac(fn, fd)}`;
+    }
+    return `${frac(fn, fd)} = ${frac(`${fn} \\times ${m}`, `${fd} \\times ${m}`)} = ${frac(fn * m, fd * m)}`;
+  };
+
+  const corrA = corrFrac(qa_n, qa_d, ma);
+  const corrB = corrFrac(qb_n, qb_d, mb);
+
   return {
-    question: `Mets les fractions $${frac(n1,d1)}$ et $${frac(n2,d2)}$ au même dénominateur.`,
-    correction: `Le PPCM de $${d1}$ et $${d2}$ est $${lcd}$.\n\n$$${frac(n1,d1)} = ${frac(n1+'\\times'+(lcd/d1), d1+'\\times'+(lcd/d1))} = ${frac(n1*(lcd/d1),lcd)}$$\n\n$$${frac(n2,d2)} = ${frac(n2+'\\times'+(lcd/d2), d2+'\\times'+(lcd/d2))} = ${frac(n2*(lcd/d2),lcd)}$$`
+    question: `Mettre les deux fractions au même dénominateur :\n\n$$${frac(qa_n, qa_d)} \\quad\\text{et}\\quad ${frac(qb_n, qb_d)}$$`,
+    correction: `${introText}\n\n$$${corrA}$$\n\n$$${corrB}$$`
   };
 };
 
@@ -1518,13 +1946,13 @@ G[96] = () => {
 // ── DATA ──────────────────────────────────────────────────────────────────────
 const CHAPTERS = [
   {num:1,title:"Règles de calcul",skills:[[11,"Effectuer un calcul sans parenthèses et sans priorité"],[12,"Effectuer un calcul sans parenthèses et avec priorité"],[13,"Effectuer un calcul avec parenthèses"],[14,"Effectuer un calcul avec parenthèses doubles"],[15,"Traduire un calcul avec le vocabulaire des opérations"],[16,"Identifier le type d'expression d'un calcul"]]},
-  {num:2,title:"Nombres relatifs et repérage",skills:[[21,"Déterminer l'opposé d'un nombre"],[22,"Placer un nombre relatif sur une droite graduée"],[23,"Comparer des nombres relatifs"],[24,"Lire les coordonnées d'un point dans un repère"],[25,"Placer un point dans un repère"]]},
+  {num:2,title:"Nombres relatifs I",skills:[[21,"Déterminer l'opposé d'un nombre"],[22,"Placer un nombre relatif sur une droite graduée"],[23,"Comparer des nombres relatifs"],[24,"Lire les coordonnées d'un point dans un repère"],[25,"Placer un point dans un repère"]]},
   {num:3,title:"Fractions I",skills:[[31,"Placer une fraction sur une droite graduée"],[32,"Indiquer l'abscisse fractionnaire d'un point"],[33,"Donner la fraction d'une quantité"],[34,"Trouver des fractions égales"],[35,"Simplifier une fraction"]]},
   {num:4,title:"Triangles",skills:[[41,"Construire un triangle (3 longueurs)"],[42,"Construire un triangle (2 longueurs + 1 angle)"],[43,"Construire un triangle (1 longueur + 2 angles)"],[44,"Vérifier si un triangle est constructible"],[45,"Tracer les médiatrices d'un triangle"],[46,"Tracer les hauteurs d'un triangle"],[47,"Calculer un angle manquant"]]},
   {num:5,title:"Fractions II",skills:[[51,"Mettre au même dénominateur"],[52,"Comparer (même dénominateur ou même numérateur)"],[53,"Comparer (dénominateurs différents)"],[54,"Encadrer entre deux entiers"],[55,"Additionner/soustraire (même dénominateur)"],[56,"Additionner/soustraire (dénominateurs différents)"]]},
   {num:6,title:"Arithmétique",skills:[[61,"Division euclidienne"],[62,"Multiples et diviseurs"],[63,"Liste des diviseurs"],[64,"Critères de divisibilité"],[65,"Nombres premiers"],[66,"Décomposition en facteurs premiers"],[67,"Simplifier avec les facteurs premiers"]]},
-  {num:7,title:"Proportionnalité",skills:[[71,"Reconnaître une situation proportionnelle"],[72,"Coefficient de proportionnalité"],[73,"Calculer une valeur proportionnelle"],[74,"Déterminer un ratio"],[75,"Appliquer un ratio"]]},
-  {num:8,title:"Nombres relatifs et calculs",skills:[[81,"Additionner deux nombres relatifs"],[82,"Soustraire deux nombres relatifs"],[83,"Calcul complexe de nombres relatifs"]]},
+  {num:7,title:"Proportionnalité I",skills:[[71,"Reconnaître une situation proportionnelle"],[72,"Coefficient de proportionnalité"],[73,"Calculer une valeur proportionnelle"],[74,"Déterminer un ratio"],[75,"Appliquer un ratio"]]},
+  {num:8,title:"Nombres relatifs II",skills:[[81,"Additionner deux nombres relatifs"],[82,"Soustraire deux nombres relatifs"],[83,"Calcul complexe de nombres relatifs"]]},
   {num:9,title:"Calcul littéral",skills:[[91,"Identifier une expression littérale"],[92,"Produire une expression littérale"],[93,"Simplifier une expression littérale"],[94,"Réduire une expression littérale"],[95,"Substituer des valeurs"],[96,"Tester une égalité"]]},
 ];
 const ALL_SKILLS = CHAPTERS.flatMap(ch=>ch.skills.map(([code,name])=>({code,name})));
