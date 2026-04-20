@@ -793,7 +793,7 @@ G[35] = () => {
 G[41] = () => {
   const a=rand(3,9), b=rand(3,9), c=rand(Math.abs(a-b)+1, a+b-1);
   return {
-    question: `Décrire les étapes de construction du triangle $ABC$ avec $AB = ${a}\\,$cm, $BC = ${b}\\,$cm et $AC = ${c}\\,$cm`,
+    question: `Décrire les étapes de construction du triangle $ABC$ tel que : $AB = ${a}\\,$cm, $BC = ${b}\\,$cm et $AC = ${c}\\,$cm`,
     correction: `**Étapes de construction :**\n\n1. Tracer le segment $[AB]$ de longueur $${a}$ cm.\n2. Du point $A$, tracer un arc de cercle de rayon $${c}$ cm.\n3. Du point $B$, tracer un arc de cercle de rayon $${b}$ cm.\n4. Le point $C$ est l'intersection des deux arcs.\n5. Relier $A$, $B$ et $C$`
   };
 };
@@ -801,7 +801,7 @@ G[41] = () => {
 G[42] = () => {
   const a=rand(4,9), b=rand(3,8), angle=pick([30,40,45,50,60,70]);
   return {
-    question: `Décrire les étapes de construction du triangle $ABC$ avec $AB = ${a}\\,$cm, $AC = ${b}\\,$cm et $\\widehat{BAC} = ${angle}°$`,
+    question: `Décrire les étapes de construction du triangle $ABC$ tel que : $AB = ${a}\\,$cm, $AC = ${b}\\,$cm et $\\widehat{BAC} = ${angle}°$`,
     correction: `**Étapes de construction :**\n\n1. Tracer le segment $[AB]$ de longueur $${a}$ cm.\n2. En $A$, tracer un angle de $${angle}°$ à l'aide du rapporteur.\n3. Sur le côté de l'angle issu de $A$, placer $C$ à $${b}$ cm de $A$\n4. Relier $B$ et $C$`
   };
 };
@@ -811,7 +811,7 @@ G[43] = () => {
   const a3=180-a1-a2;
   const c=rand(4,8);
   return {
-    question: `Décrire les étapes de construction du triangle $ABC$ avec $AB = ${c}\\,$cm, $\\widehat{BAC} = ${a1}°$ et $\\widehat{ABC} = ${a2}°$`,
+    question: `Décrire les étapes de construction du triangle $ABC$ tel que : $AB = ${c}\\,$cm, $\\widehat{BAC} = ${a1}°$ et $\\widehat{ABC} = ${a2}°$`,
     correction: `**Étapes de construction :**\n\n1. Tracer le segment $[AB]$ de longueur $${c}$ cm.\n2. En $A$, tracer un demi-droite faisant un angle de $${a1}°$ avec $[AB]$\n3. En $B$, tracer une demi-droite faisant un angle de $${a2}°$ avec $[AB]$\n4. Le point $C$ est l'intersection des deux demi-droites.`
   };
 };
@@ -924,53 +924,172 @@ G[51] = () => {
 };
 
 G[52] = () => {
-  const type=pick(['same_d','same_n']);
-  if(type==='same_d') {
-    const d=pick([5,6,7,8,9,10]), n1=rand(1,d-1), n2=rand(1,d-1);
-    const [mn,mx]=[Math.min(n1,n2),Math.max(n1,n2)];
-    return {
-      question: `Compare $${frac(n1,d)}$ et $${frac(n2,d)}$ avec $<$, $>$ ou $=$.`,
-      correction: `Même dénominateur $${d}$, on compare les numérateurs : $${n1}$ ${n1<n2?'<':n1>n2?'>':'='} $${n2}$.\n\n$$${frac(n1,d)} ${n1<n2?'<':n1>n2?'>':'='} ${frac(n2,d)}$$`
-    };
-  } else {
-    const n=rand(2,6), d1=rand(2,8), d2=rand(2,8);
-    return {
-      question: `Compare $${frac(n,d1)}$ et $${frac(n,d2)}$ avec $<$, $>$ ou $=$.`,
-      correction: `Même numérateur $${n}$. Plus le dénominateur est grand, plus la fraction est petite.\n\n$${d1} ${d1<d2?'>':'<'} ${d2}$ donc $${frac(n,d1)} ${d1<d2?'>':'<'} ${frac(n,d2)}$`
-    };
+  const type = pick([1, 2]);
+
+  let f1n, f1d, f2n, f2d, corrText, symbol;
+
+  if (type === 1) {
+    const d = rand(3, 19);
+    let n1, n2;
+    do {
+      n1 = rand(1, 19);
+      n2 = rand(1, 19);
+    } while (n1 === n2 || n1 === d || n2 === d || Math.abs(n1 - n2) > 5);
+    f1n = n1; f1d = d; f2n = n2; f2d = d;
+
+    symbol = n1 < n2 ? '<' : '>';
+    corrText = `Même dénominateur, on compare les numérateurs : $${n1} ${symbol} ${n2}$`;
   }
+
+  else {
+    const n = rand(1, 19);
+    let d1, d2;
+    do {
+      d1 = rand(3, 19);
+      d2 = rand(3, 19);
+    } while (d1 === d2 || d1 === n || d2 === n || Math.abs(d1 - d2) > 5);
+    f1n = n; f1d = d1; f2n = n; f2d = d2;
+
+    symbol = d1 > d2 ? '<' : '>';
+    corrText = `Même numérateur, on compare les dénominateurs : $${d1} ${d1 < d2 ? '<' : '>'} ${d2}$`;
+  }
+
+  return {
+    question: `Comparer :\n\n$$${frac(f1n, f1d)} \\quad\\text{et}\\quad ${frac(f2n, f2d)}$$`,
+    correction: `${corrText}\n\n$$${frac(f1n, f1d)} ${symbol} ${frac(f2n, f2d)}$$`
+  };
 };
 
 G[53] = () => {
-  const d1=pick([3,4,5,6]), d2=pick([3,4,5,6]);
-  const n1=rand(1,d1), n2=rand(1,d2);
-  const lcd=ppcm(d1,d2);
-  const nn1=n1*(lcd/d1), nn2=n2*(lcd/d2);
+  const r = Math.random();
+  const type = r < 0.20 ? 1 : r < 0.60 ? 2 : 3;
+
+  let d1, d2, n1, n2, lcd;
+
+  const tryGen = () => {
+    if (type === 1) {
+      d1 = rand(2, 12);
+      const maxMult = Math.floor(49 / d1);
+      const mult = rand(2, Math.max(2, maxMult));
+      d2 = d1 * mult;
+      lcd = d2;
+    } else if (type === 2) {
+      do {
+        d1 = rand(2, 12);
+        d2 = rand(2, 12);
+      } while (d1 === d2 || pgcd(d1, d2) !== 1 || d1 * d2 > 120);
+      lcd = d1 * d2;
+    } else {
+      do {
+        d1 = rand(2, 12);
+        d2 = rand(2, 12);
+      } while (d1 === d2 || pgcd(d1, d2) <= 1 || d2 % d1 === 0 || d1 % d2 === 0);
+      lcd = ppcm(d1, d2);
+    }
+
+    const m1 = lcd / d1, m2 = lcd / d2;
+
+    // Choisir n1 tel que n1*m1 soit dans [1, lcd-1]
+    const maxN1 = Math.floor((lcd - 1) / m1);
+    if (maxN1 < 1) return false;
+    n1 = rand(1, maxN1);
+    const nn1 = n1 * m1;
+
+    // nn2 doit être proche de nn1 (écart max 4) et dans [1, lcd-1]
+    const minNN2 = Math.max(1, nn1 - 4);
+    const maxNN2 = Math.min(lcd - 1, nn1 + 4);
+    // nn2 doit être divisible par m2
+    const candidates = [];
+    for (let v = minNN2; v <= maxNN2; v++) {
+      if (v % m2 === 0) candidates.push(v);
+    }
+    if (candidates.length === 0) return false;
+    const nn2 = pick(candidates);
+    n2 = nn2 / m2;
+
+    if (n1 === n2) return false;
+
+    return true;
+  };
+
+  let attempts = 0;
+  while (!tryGen() && attempts++ < 100) {}
+
+  const m1 = lcd / d1, m2 = lcd / d2;
+  const nn1 = n1 * m1, nn2 = n2 * m2;
+
+  // Ordre aléatoire dans la question
+  const swapped = pick([true, false]);
+  const [qa_n, qa_d, qb_n, qb_d, ma, mb, nna, nnb] = swapped
+    ? [n2, d2, n1, d1, m2, m1, nn2, nn1]
+    : [n1, d1, n2, d2, m1, m2, nn1, nn2];
+
+  const symbol = nna < nnb ? '<' : nna > nnb ? '>' : '=';
+
+  // Correction fractions
+  const corrFrac = (fn, fd, m) => {
+    if (m === 1) return `${frac(fn, fd)} = ${frac(fn, fd)}`;
+    return `${frac(fn, fd)} = ${frac(`${fn} \\times ${m}`, `${fd} \\times ${m}`)} = ${frac(fn * m, fd * m)}`;
+  };
+
+  const corrA = corrFrac(qa_n, qa_d, ma);
+  const corrB = corrFrac(qb_n, qb_d, mb);
+
   return {
-    question: `Compare $${frac(n1,d1)}$ et $${frac(n2,d2)}$ en les mettant au même dénominateur.`,
-    correction: `On réduit au même dénominateur ($PPCM = ${lcd}$) :\n\n$$${frac(n1,d1)} = ${frac(nn1,lcd)} \\qquad ${frac(n2,d2)} = ${frac(nn2,lcd)}$$\n\nComparaison : $${nn1} ${nn1<nn2?'<':nn1>nn2?'>':'='} ${nn2}$, donc :\n\n$$${frac(n1,d1)} ${nn1<nn2?'<':nn1>nn2?'>':'='} ${frac(n2,d2)}$$`
+    question: `Comparer :\n\n$$${frac(qa_n, qa_d)} \\quad\\text{et}\\quad ${frac(qb_n, qb_d)}$$`,
+    correction: `On met les fractions au même dénominateur :\n\n$$${corrA}$$\n\n$$${corrB}$$\n\nOn compare :\n\n$$${frac(nna, lcd)} ${symbol} ${frac(nnb, lcd)} \\quad\\text{donc :}\\quad ${frac(qa_n, qa_d)} ${symbol} ${frac(qb_n, qb_d)}$$`
   };
 };
 
 G[54] = () => {
-  const d=pick([3,4,5,6,7,8]), n=rand(d+1,3*d-1);
-  const lo=Math.floor(n/d), hi=lo+1;
+  let n, d, q, r;
+  do {
+    d = rand(3, 12);
+    q = rand(3, 28);
+    r = rand(1, d - 1);
+    n = d * q + r;
+  } while (n < 3 || n > 199 || n <= d);
+
+  const RED  = s => `\\textcolor{#c0392b}{${s}}`;
+  const BLUE = s => `\\textcolor{#2a6496}{${s}}`;
+
   return {
-    question: `Encadre $${frac(n,d)}$ entre deux entiers consécutifs.`,
-    correction: `On divise : $${n} \\div ${d} = ${lo}$ reste $${n%d}$.\n\nDonc $${lo} < ${frac(n,d)} < ${hi}$\n\n*Vérification : $${frac(lo*d,d)} < ${frac(n,d)} < ${frac(hi*d,d)}$*`
+    question: `Encadrer $${frac(n, d)}$ entre deux entiers consécutifs.`,
+    correction: `On effectue la division euclidienne de $${n}$ par $${d}$ :\n\n$$${n} = ${d} \\times ${RED(q)} + ${r}$$\n\nDonc :\n\n$$${RED(q)} < ${frac(n, d)} < ${BLUE(q + 1)}$$`
   };
 };
 
 G[55] = () => {
-  const d=pick([5,6,7,8,9,10]);
-  let n1=rand(1,d-1), n2=rand(1,d-1);
-  const op=pick(['+','-']);
-  if(op==='-' && n1<n2) [n1,n2]=[n2,n1];
-  const res=op==='+'?n1+n2:n1-n2;
-  const g=pgcd(Math.abs(res),d);
+  const op = pick(['+', '-']);
+  const simplifiable = Math.random() < 0.40;
+
+  let d, n1, n2, resN, g;
+
+  let attempts = 0;
+  do {
+    d = simplifiable ? rand(3, 49) : rand(3, 19);
+    // Si dénominateur petit, on autorise des numérateurs plus grands
+    const maxN = d <= 9 ? d * 3 : d - 1;
+    n1 = rand(1, maxN);
+    n2 = rand(1, maxN);
+    if (op === '-' && n1 <= n2) { attempts++; continue; }
+    resN = op === '+' ? n1 + n2 : n1 - n2;
+    if (resN <= 0 || resN === d) { attempts++; continue; }
+    g = pgcd(resN, d);
+    if (simplifiable && g === 1) { attempts++; continue; }
+    if (!simplifiable && g !== 1) { attempts++; continue; }
+    break;
+  } while (attempts < 200);
+
+  const resSimpl = g > 1 ? ` = ${frac(resN / g, d / g)}` : '';
+
+  const expr = `${frac(n1, d)} ${op} ${frac(n2, d)}`;
+  const step1 = `${frac(`${n1} ${op} ${n2}`, d)}`;
+  const step2 = `${frac(resN, d)}`;
+
   return {
-    question: `Calcule $${frac(n1,d)} ${op} ${frac(n2,d)}$.`,
-    correction: `Même dénominateur, on opère sur les numérateurs :\n\n$$${frac(n1,d)} ${op} ${frac(n2,d)} = ${frac(n1+(op==='+'?'+':'-')+n2, d)} = ${frac(res,d)}${g>1?' = '+simplFrac(res,d):''}$$`
+    question: `Calculer et simplifier éventuellement le résultat :\n\n$$${expr}$$`,
+    correction: `$$${expr} = ${step1} = ${step2}${resSimpl}$$`
   };
 };
 
@@ -990,11 +1109,14 @@ G[56] = () => {
 
 // ── SÉQUENCE 6 : Arithmétique ─────────────────────────────────────────────────
 G[61] = () => {
-  const b=rand(6,12), q0=rand(5,15), r=rand(0,b-1);
-  const a=b*q0+r;
+  const b = rand(3, 12);
+  const q = rand(10, Math.floor(999 / b));
+  const r = rand(0, b - 1);
+  const a = b * q + r;
+
   return {
-    question: `Effectue la division euclidienne de $${a}$ par $${b}$.`,
-    correction: `$$${a} = ${b} \\times ${q0} + ${r}$$\n\n- **Dividende :** $${a}$\n- **Diviseur :** $${b}$\n- **Quotient :** $${q0}$\n- **Reste :** $${r}$\n\n*Vérification : $${b} \\times ${q0} + ${r} = ${b*q0} + ${r} = ${a}$ ✓ et $${r} < ${b}$ ✓*`
+    question: `Effectuer la division euclidienne de $${a}$ par $${b}$`,
+    correction: `On cherche combien de fois il y a $${b}$ dans $${a}$ :\n\n$$${a} = ${b} \\times ${q} + ${r}$$`
   };
 };
 
@@ -1949,7 +2071,7 @@ const CHAPTERS = [
   {num:2,title:"Nombres relatifs I",skills:[[21,"Déterminer l'opposé d'un nombre"],[22,"Placer un nombre relatif sur une droite graduée"],[23,"Comparer des nombres relatifs"],[24,"Lire les coordonnées d'un point dans un repère"],[25,"Placer un point dans un repère"]]},
   {num:3,title:"Fractions I",skills:[[31,"Placer une fraction sur une droite graduée"],[32,"Indiquer l'abscisse fractionnaire d'un point"],[33,"Calculer la fraction d'une quantité"],[34,"Trouver des fractions égales"],[35,"Simplifier une fraction"]]},
   {num:4,title:"Triangles",skills:[[41,"Construire un triangle (3 longueurs)"],[42,"Construire un triangle (2 longueurs + 1 angle)"],[43,"Construire un triangle (1 longueur + 2 angles)"],[44,"Vérifier si un triangle est constructible"],[45,"Tracer les médiatrices d'un triangle"],[46,"Tracer les hauteurs d'un triangle"],[47,"Calculer un angle manquant"]]},
-  {num:5,title:"Fractions II",skills:[[51,"Mettre deux fractions au même dénominateur"],[52,"Comparer deux fractions (même dénominateur ou même numérateur)"],[53,"Comparer deux fractions (dénominateurs différents)"],[54,"Encadrer une fraction entre deux entiers"],[55,"Additionner/soustraire deux fractions (même dénominateur)"],[56,"Additionner/soustraire deux fractions (dénominateurs différents)"]]},
+  {num:5,title:"Fractions II",skills:[[51,"Mettre deux fractions au même dénominateur"],[52,"Comparer deux fractions (même dénominateur ou même numérateur)"],[53,"Comparer deux fractions (dénominateurs différents)"],[54,"Encadrer une fraction entre deux entiers consécutifs"],[55,"Additionner/soustraire deux fractions (même dénominateur)"],[56,"Additionner/soustraire deux fractions (dénominateurs différents)"]]},
   {num:6,title:"Arithmétique",skills:[[61,"Effectuer une division euclidienne"],[62,"Identifier si un nombre est multiple/diviseur d'un autre"],[63,"Déterminer la liste des diviseurs d'un nombre"],[64,"Déterminer la divisibilité d'un nombre avec les critères de divisibilité"],[65,"Reconnaître un nombre premier"],[66,"Décomposer un nombre en produit de facteurs premiers"],[67,"Simplifier une fraction avec la décomposition en facteurs premiers"]]},
   {num:7,title:"Proportionnalité I",skills:[[71,"Reconnaître une situation proportionnelle"],[72,"Déterminer un coefficient de proportionnalité"],[73,"Déterminer une valeur proportionnelle"],[74,"Déterminer un ratio"],[75,"Appliquer un ratio"]]},
   {num:8,title:"Nombres relatifs II",skills:[[81,"Additionner deux nombres relatifs"],[82,"Soustraire deux nombres relatifs"],[83,"Effectuer un calcul complexe de nombres relatifs"]]},
