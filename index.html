@@ -1623,19 +1623,219 @@ G[81] = () => {
 };
 
 G[82] = () => {
-  const a=rand(-10,10), b=rand(-10,10), r=a-b;
+  const type = pick([1, 2, 3, 4]);
+  const a = rand(1, 19);
+  let b = rand(1, 19);
+
+  let expr, corrText;
+
+  if (type === 1) {
+    // a - b avec a < b
+    while (b <= a) { b = rand(1, 19); }
+    const res = a - b;
+    expr = `${a} - ${b}`;
+    corrText = `$$${a} - ${b} = ${res}$$`;
+  }
+
+  else if (type === 2) {
+    // a - (-b)
+    const res = a + b;
+    expr = `${a} - (-${b})`;
+    corrText = `On utilise la règle des signes : $-(-\\ldots) = +\\ldots$\n\n$$${a} - (-${b}) = ${a} + ${b} = ${res}$$`;
+  }
+
+  else if (type === 3) {
+    // -a - b
+    const res = -(a + b);
+    expr = `-${a} - ${b}`;
+    corrText = `$$-${a} - ${b} = ${res}$$`;
+  }
+
+  else {
+    // -a - (-b)
+    const res = -a + b;
+    expr = `-${a} - (-${b})`;
+    corrText = `On utilise la règle des signes : $-(-\\ldots) = +\\ldots$\n\n$$-${a} - (-${b}) = -${a} + ${b} = ${res}$$`;
+  }
+
   return {
-    question: `Calcule $(${a}) - (${b})$.`,
-    correction: `Soustraire un nombre revient à ajouter son opposé :\n\n$$(${a}) - (${b}) = (${a}) + (${-b}) = ${r}$$`
+    question: `Calculer :\n\n$$${expr}$$`,
+    correction: corrText
   };
 };
 
 G[83] = () => {
-  const a=rand(-8,8), b=rand(-8,8), c=rand(-8,8), d=rand(-8,8);
-  const r=a+b-c+d;
+  const type = pick([1, 2, 3, 4, 5]);
+
+  const rn = () => { let v; do { v = rand(-19, 19); } while (v === 0); return v; };
+
+  const showOp = (op, n) => {
+    if (n < 0) return `${op} (${n})`;
+    return `${op} ${n}`;
+  };
+
+  const simplifySign = (op, n) => {
+    if (n < 0 && op === '+') return `- ${Math.abs(n)}`;
+    if (n < 0 && op === '-') return `+ ${Math.abs(n)}`;
+    if (n > 0 && op === '+') return `+ ${n}`;
+    if (n > 0 && op === '-') return `- ${n}`;
+  };
+
+  // Affiche innerVal après calcul de parenthèse :
+  // si positif → pas de parenthèses, juste le signe simplifié
+  // si négatif → parenthèses
+  const showInnerVal = (op, val) => {
+    if (val > 0) return simplifySign(op, val);
+    if (val < 0) return `${op} (${val})`;
+    return `${op} 0`;
+  };
+
+  function aligned(lines) {
+    return `$$\\begin{aligned}\n  A &= ${lines[0]}${lines.slice(1).map(l => ` \\\\[3pt]\n  &= ${l}`).join('')}\n\\end{aligned}$$`;
+  }
+
+  // La 1ère ligne est toujours l'énoncé sans "A ="
+  const firstLine = expr => expr.replace(/^A = /, '');
+
+  let question_expr, corrIntro, corrLines;
+
+  if (type === 1) {
+    const a = rn(), b = rn(), c = rn();
+    const op1 = pick(['+','-']), op2 = pick(['+','-']);
+    question_expr = `A = ${a} ${showOp(op1, b)} ${showOp(op2, c)}`;
+
+    const s1 = simplifySign(op1, b), s2 = simplifySign(op2, c);
+    const line0 = firstLine(question_expr);
+    const line1 = `${a} ${s1} ${s2}`;
+    const v1 = op1 === '+' ? a + b : a - b;
+    const line2 = `${v1} ${s2}`;
+    const res = op2 === '+' ? v1 + c : v1 - c;
+
+    const needSimpl = b < 0 || c < 0;
+    corrIntro = `On utilise les règles des signes :`;
+    corrLines = needSimpl
+      ? [line0, line1, line2, `${res}`]
+      : [line0, line2, `${res}`];
+
+  } else if (type === 2) {
+    const a = rn(), b = rn(), c = rn(), d = rn();
+    const op1 = pick(['+','-']), op2 = pick(['+','-']), op3 = pick(['+','-']);
+    question_expr = `A = ${a} ${showOp(op1, b)} ${showOp(op2, c)} ${showOp(op3, d)}`;
+
+    const s1 = simplifySign(op1, b), s2 = simplifySign(op2, c), s3 = simplifySign(op3, d);
+    const line0 = firstLine(question_expr);
+    const line1 = `${a} ${s1} ${s2} ${s3}`;
+    const v1 = op1 === '+' ? a + b : a - b;
+    const line2 = `${v1} ${s2} ${s3}`;
+    const v2 = op2 === '+' ? v1 + c : v1 - c;
+    const line3 = `${v2} ${s3}`;
+    const res = op3 === '+' ? v2 + d : v2 - d;
+
+    const needSimpl = b < 0 || c < 0 || d < 0;
+    corrIntro = `On utilise les règles des signes :`;
+    corrLines = needSimpl
+      ? [line0, line1, line2, line3, `${res}`]
+      : [line0, line2, line3, `${res}`];
+
+  } else if (type === 3) {
+    const a = rn(), b = rn(), c = rn();
+    const op1 = pick(['+','-']), op2 = pick(['+','-']);
+    const innerShow = c < 0 ? `${b} ${showOp(op2, c)}` : `${b} ${op2} ${c}`;
+    question_expr = `A = ${a} ${op1} (${innerShow})`;
+
+    const s_inner = simplifySign(op2, c);
+    const innerVal = op2 === '+' ? b + c : b - c;
+    const innerSimpl = c < 0 ? `${b} ${s_inner}` : `${b} ${op2} ${c}`;
+    const res = op1 === '+' ? a + innerVal : a - innerVal;
+    const outerDisplay = simplifySign(op1, innerVal);
+
+    const line0 = firstLine(question_expr);
+    const line_paren = `${a} ${op1} (${innerSimpl})`;
+    // Si innerVal > 0 : pas de parenthèses, on applique directement le signe
+    // Si innerVal < 0 : parenthèses, puis étape de simplification du signe
+    const line_val_pos = `${a} ${outerDisplay}`; // innerVal > 0
+    const line_val_neg = `${a} ${op1} (${innerVal})`; // innerVal < 0
+    const line_outer   = `${a} ${outerDisplay}`; // après simplification signe (innerVal < 0)
+
+    corrIntro = `On utilise les règles des signes et on respecte les priorités opératoires en commençant par les parenthèses :`;
+    const lines = [line0];
+    if (c < 0) lines.push(line_paren);
+    if (innerVal > 0) {
+      lines.push(line_val_pos);
+    } else {
+      lines.push(line_val_neg, line_outer);
+    }
+    lines.push(`${res}`);
+    corrLines = lines;
+
+  } else if (type === 4) {
+    const a = rn(), b = rn(), c = rn(), d = rn();
+    const op1 = pick(['+','-']), op2 = pick(['+','-']), op3 = pick(['+','-']);
+    const innerShow = c < 0 ? `${b} ${showOp(op2, c)}` : `${b} ${op2} ${c}`;
+    question_expr = `A = ${a} ${op1} (${innerShow}) ${showOp(op3, d)}`;
+
+    const s_inner = simplifySign(op2, c);
+    const innerVal = op2 === '+' ? b + c : b - c;
+    const innerSimpl = c < 0 ? `${b} ${s_inner}` : `${b} ${op2} ${c}`;
+    const s3 = simplifySign(op3, d);
+    const outerDisplay = simplifySign(op1, innerVal);
+    const v1 = op1 === '+' ? a + innerVal : a - innerVal;
+    const res = op3 === '+' ? v1 + d : v1 - d;
+
+    const line0 = firstLine(question_expr);
+    const line_paren   = `${a} ${op1} (${innerSimpl}) ${showOp(op3, d)}`;
+    const line_val_pos = `${a} ${outerDisplay} ${s3}`; // innerVal > 0 : pas de parenthèses
+    const line_val_neg = `${a} ${op1} (${innerVal}) ${showOp(op3, d)}`; // innerVal < 0
+    const line_outer   = `${a} ${outerDisplay} ${s3}`; // après simplification signe
+    const line_mid     = `${v1} ${s3}`;
+
+    corrIntro = `On utilise les règles des signes et on respecte les priorités opératoires en commençant par les parenthèses :`;
+    const lines = [line0];
+    if (c < 0) lines.push(line_paren);
+    if (innerVal > 0) {
+      lines.push(line_val_pos);
+    } else {
+      lines.push(line_val_neg, line_outer);
+    }
+    lines.push(line_mid, `${res}`);
+    corrLines = lines;
+
+  } else {
+    const a = rn(), b = rn(), c = rn(), d = rn();
+    const op1 = pick(['+','-']), op2 = pick(['+','-']), op3 = pick(['+','-']);
+    const innerShow = d < 0 ? `${c} ${showOp(op3, d)}` : `${c} ${op3} ${d}`;
+    question_expr = `A = ${a} ${showOp(op1, b)} ${op2} (${innerShow})`;
+
+    const s1 = simplifySign(op1, b);
+    const s_inner = simplifySign(op3, d);
+    const innerVal = op3 === '+' ? c + d : c - d;
+    const innerSimpl = d < 0 ? `${c} ${s_inner}` : `${c} ${op3} ${d}`;
+    const outerDisplay = simplifySign(op2, innerVal);
+    const v1 = op1 === '+' ? a + b : a - b;
+    const res = op2 === '+' ? v1 + innerVal : v1 - innerVal;
+
+    const line0 = firstLine(question_expr);
+    const line_paren   = `${a} ${s1} ${op2} (${innerSimpl})`;
+    const line_val_pos = `${a} ${s1} ${outerDisplay}`; // innerVal > 0
+    const line_val_neg = `${a} ${s1} ${op2} (${innerVal})`; // innerVal < 0
+    const line_outer   = `${a} ${s1} ${outerDisplay}`;
+    const line_mid     = `${v1} ${outerDisplay}`;
+
+    corrIntro = `On utilise les règles des signes et on respecte les priorités opératoires en commençant par les parenthèses :`;
+    const lines = [line0];
+    if (b < 0 || d < 0) lines.push(line_paren);
+    if (innerVal > 0) {
+      lines.push(line_val_pos);
+    } else {
+      lines.push(line_val_neg, line_outer);
+    }
+    lines.push(line_mid, `${res}`);
+    corrLines = lines;
+  }
+
   return {
-    question: `Calcule $(${a}) + (${b}) - (${c}) + (${d})$.`,
-    correction: `On transforme les soustractions en additions d'opposés :\n\n$$(${a}) + (${b}) + (${-c}) + (${d})$$\n\nPositifs : $${[a,b,-c,d].filter(x=>x>0).join(' + ')||0}$\nNégatifs : $${[a,b,-c,d].filter(x=>x<0).join(' + ')||0}$\n\n$$= ${r}$$`
+    question: `Calculer :\n\n$$${question_expr}$$`,
+    correction: `${corrIntro}\n\n${aligned(corrLines)}`
   };
 };
 
@@ -2398,18 +2598,512 @@ G[95] = () => {
 };
 
 G[96] = () => {
-  const letter=pick(['x','n','a']), c1=rand(2,4), c2=rand(1,8);
-  const right=rand(1,6), result=c1*right+c2;
-  const diff=pick([1,2,3]);
-  const wrong=right+(pick([true,false])?diff:-diff);
-  const vals=shuffle([right,wrong]);
+  const type = pick([1, 2, 3, 4, 5, 6]);
+  const isTrue = Math.random() < 0.5;
+
+  const termAX = (a) => a === 1 ? `x` : `${a}x`;
+  const showB = (b) => b > 0 ? `+ ${b}` : `- ${Math.abs(b)}`;
+  const showConst = (b) => b < 0 ? `- ${Math.abs(b)}` : `${b}`;
+
+  let a, b, c, d, x;
+  let found = false;
+  let attempts = 0;
+
+  while (!found && attempts < 2000) {
+    attempts++;
+    x = rand(1, 9);
+
+    if (type === 1 || type === 2) {
+      a = rand(2, 9);
+      b = rand(-14, 14); if (b === 0) continue;
+      c = a * x + b;
+      if (c < -14 || c > 14) continue;
+      found = true;
+    } else {
+      a = rand(2, 9);
+      do { c = rand(2, 9); } while (c === a);
+      b = rand(-19, 19); if (b === 0) continue;
+      d = (a - c) * x + b;
+      if (d < -19 || d > 19 || d === 0 || d === b) continue;
+      const lv = a * x + b;
+      const rv = c * x + d;
+      if (lv > 40 || rv > 40) continue;
+      found = true;
+    }
+  }
+
+  // Égalité fausse
+  if (!isTrue) {
+    const delta = pick([1, -1, 2, -2]);
+    if (type === 1 || type === 2) {
+      if (pick([true, false])) b += delta; else c += delta;
+    } else {
+      if (pick([true, false])) b += delta; else d += delta;
+    }
+  }
+
+  // Expressions
+  let lhsExpr, rhsExpr;
+  if (type === 1) {
+    lhsExpr = `${termAX(a)} ${showB(b)}`;
+    rhsExpr = `${c}`;
+  } else if (type === 2) {
+    lhsExpr = `${showConst(b)} + ${termAX(a)}`;
+    rhsExpr = `${c}`;
+  } else if (type === 3) {
+    lhsExpr = `${termAX(a)} ${showB(b)}`;
+    rhsExpr = `${termAX(c)} ${showB(d)}`;
+  } else if (type === 4) {
+    lhsExpr = `${showConst(b)} + ${termAX(a)}`;
+    rhsExpr = `${termAX(c)} ${showB(d)}`;
+  } else if (type === 5) {
+    lhsExpr = `${termAX(a)} ${showB(b)}`;
+    rhsExpr = `${showConst(d)} + ${termAX(c)}`;
+  } else {
+    lhsExpr = `${showConst(b)} + ${termAX(a)}`;
+    rhsExpr = `${showConst(d)} + ${termAX(c)}`;
+  }
+
+  const lhsVal = a * x + b;
+  const rhsVal = type <= 2 ? c : c * x + d;
+  const equalityStr = `${lhsExpr} = ${rhsExpr}`;
+
+  // Étapes de calcul
+  const buildLHS = () => {
+    const axVal = a * x;
+    if (type === 1 || type === 3 || type === 5) {
+      return [`${lhsExpr}`, `${a} \\times ${x} ${showB(b)}`, `${axVal} ${showB(b)}`, `${lhsVal}`];
+    } else {
+      return [`${lhsExpr}`, `${showConst(b)} + ${a} \\times ${x}`, `${showConst(b)} + ${axVal}`, `${lhsVal}`];
+    }
+  };
+
+  const buildRHS = () => {
+    if (type === 1 || type === 2) {
+      return [`${rhsVal}`];
+    }
+    const cxVal = c * x;
+    if (type === 3 || type === 4) {
+      return [`${rhsExpr}`, `${c} \\times ${x} ${showB(d)}`, `${cxVal} ${showB(d)}`, `${rhsVal}`];
+    } else {
+      return [`${rhsExpr}`, `${showConst(d)} + ${c} \\times ${x}`, `${showConst(d)} + ${cxVal}`, `${rhsVal}`];
+    }
+  };
+
+  const lhsLines = buildLHS();
+  const rhsLines = buildRHS();
+
+  const buildAligned = (lines) =>
+    `$$\\begin{aligned}\n  ${lines.map((l, i) => i === 0 ? `& ${l}` : `&= ${l}`).join(' \\\\[3pt]\n  ')}\n\\end{aligned}$$`;
+
+  const lhsBlock = buildAligned(lhsLines);
+  const rhsBlock = buildAligned(rhsLines);
+
+  const calcBlock = `<div style="display:flex; justify-content:left; gap:160px; align-items:flex-start; margin:10px 0 -5px 0;">
+    <div style="text-align:left;">
+      <span style="color:inherit; font-weight:normal;">Membre de gauche :</span>
+      <div style="margin-top:-5px;">${lhsBlock}</div>
+    </div>
+    <div style="text-align:left;">
+      <span style="color:inherit; font-weight:normal;">Membre de droite :</span>
+      <div style="margin-top:-5px;">${rhsBlock}</div>
+    </div>
+  </div>`;
+
+  const compareSign = isTrue ? '=' : '\\neq';
+  const compareLine = `$${lhsVal} ${compareSign} ${rhsVal}$`;
+  const conclusion = isTrue
+    ? `Donc, l'égalité $${equalityStr}$ est vraie pour $x = ${x}$`
+    : `Donc, l'égalité $${equalityStr}$ est fausse pour $x = ${x}$`;
+
   return {
-    question:`Pour chacune des valeurs suivantes, tester si elle vérifie l'égalité $$${c1}${letter} + ${c2} = ${result}$$ \n\n- $${letter} = ${vals[0]}$\n- $${letter} = ${vals[1]}$`,
-    correction:vals.map(v=>{
-      const mg=c1*v+c2;
-      const ok=mg===result;
-      return `**$${letter} = ${v}$ :** membre gauche $= ${c1} \\times ${v} + ${c2} = ${mg}$, membre droit $= ${result}$ → ${ok?'$'+mg+' = '+result+'$ ✓ **solution**':'$'+mg+' \\neq '+result+'$ ✗ **pas solution**'}`;
-    }).join('\n\n')
+    question: `L'égalité $${equalityStr}$ est-elle vraie pour $x = ${x}$ ?`,
+    correction: `On calcule séparément chaque membre de l'égalité, en remplaçant $x$ par $${x}$ :\n\n${calcBlock}\n\n${compareLine}\n\n<div style="margin-top:15px;"></div>\n\n${conclusion}`
+  };
+};
+
+G[101] = () => {
+  const type = pick([1, 2, 3]);
+
+  if (type === 1) {
+    // Symétrique d'un point par rapport à une droite horizontale ou verticale
+    const x = rand(-5, 5), y = rand(-5, 5);
+    const axeType = pick(['horizontale', 'verticale']);
+    const val = rand(-3, 3);
+    let symX, symY, axeStr;
+    if (axeType === 'horizontale') {
+      axeStr = `y = ${val}`;
+      symX = x; symY = 2 * val - y;
+    } else {
+      axeStr = `x = ${val}`;
+      symX = 2 * val - x; symY = y;
+    }
+    return {
+      question: `Donner les coordonnées du symétrique du point $A(${x}\\,;\\,${y})$ par rapport à la droite d'équation $${axeStr}$.`,
+      correction: `La droite $${axeStr}$ est ${axeType === 'horizontale' ? 'horizontale' : 'verticale'}.\n\nPour trouver le symétrique de $A$ par rapport à cette droite :\n\n- On calcule la distance de $A$ à la droite\n- On reporte cette distance de l'autre côté\n\n${axeType === 'horizontale'
+        ? `La distance de $A$ à la droite est $|${y} - (${val})| = ${Math.abs(y - val)}$.\n\nLe symétrique a la même abscisse et une ordonnée à $${Math.abs(y - val)}$ de l'autre côté : $${symY}$.`
+        : `La distance de $A$ à la droite est $|${x} - (${val})| = ${Math.abs(x - val)}$.\n\nLe symétrique a la même ordonnée et une abscisse à $${Math.abs(x - val)}$ de l'autre côté : $${symX}$.`}\n\nLe symétrique de $A$ est $A'(${symX}\\,;\\,${symY})$.`
+    };
+  }
+
+  if (type === 2) {
+    // Symétrique d'un segment
+    const x1 = rand(-4, 4), y1 = rand(-4, 4);
+    const x2 = rand(-4, 4), y2 = rand(-4, 4);
+    const axeType = pick(['horizontale', 'verticale']);
+    const val = rand(-2, 2);
+    let axeStr, sA, sB;
+    if (axeType === 'horizontale') {
+      axeStr = `y = ${val}`;
+      sA = `(${x1}\\,;\\,${2*val-y1})`; sB = `(${x2}\\,;\\,${2*val-y2})`;
+    } else {
+      axeStr = `x = ${val}`;
+      sA = `(${2*val-x1}\\,;\\,${y1})`; sB = `(${2*val-x2}\\,;\\,${y2})`;
+    }
+    return {
+      question: `Décrire comment construire le symétrique du segment $[AB]$ avec $A(${x1}\\,;\\,${y1})$ et $B(${x2}\\,;\\,${y2})$ par rapport à la droite $${axeStr}$.`,
+      correction: `Pour construire le symétrique d'un segment par symétrie axiale :\n\n1. On construit le symétrique $A'$ de $A$ par rapport à la droite $${axeStr}$ : $A'${sA}$\n2. On construit le symétrique $B'$ de $B$ par rapport à la droite $${axeStr}$ : $B'${sB}$\n3. Le symétrique du segment $[AB]$ est le segment $[A'B']$\n\n*Rappel : pour chaque point, on trace la perpendiculaire à l'axe passant par ce point, puis on reporte la même distance de l'autre côté.*`
+    };
+  }
+
+  // type 3 : symétrique d'un triangle
+  const pts = ['A', 'B', 'C'];
+  const coords = pts.map(() => [rand(-4, 4), rand(-4, 4)]);
+  const axeType = pick(['horizontale', 'verticale']);
+  const val = rand(-2, 2);
+  let axeStr, syms;
+  if (axeType === 'horizontale') {
+    axeStr = `y = ${val}`;
+    syms = coords.map(([x, y]) => `(${x}\\,;\\,${2*val-y})`);
+  } else {
+    axeStr = `x = ${val}`;
+    syms = coords.map(([x, y]) => `(${2*val-x}\\,;\\,${y})`);
+  }
+  return {
+    question: `Décrire comment construire le symétrique du triangle $ABC$ avec $A(${coords[0].join('\\,;\\,')})$, $B(${coords[1].join('\\,;\\,')})$ et $C(${coords[2].join('\\,;\\,')})$ par rapport à la droite $${axeStr}$.`,
+    correction: `Pour construire le symétrique d'un triangle par symétrie axiale :\n\n1. On construit le symétrique de chaque sommet par rapport à la droite $${axeStr}$ :\n   - $A' ${syms[0]}$\n   - $B' ${syms[1]}$\n   - $C' ${syms[2]}$\n2. On relie $A'$, $B'$ et $C'$ pour obtenir le triangle $A'B'C'$\n\n*Le triangle $A'B'C'$ est le symétrique du triangle $ABC$.*`
+  };
+};
+
+G[102] = () => {
+  const type = pick([1, 2, 3]);
+
+  if (type === 1) {
+    // Symétrique d'un point par rapport à un centre
+    const x = rand(-5, 5), y = rand(-5, 5);
+    const cx = rand(-3, 3), cy = rand(-3, 3);
+    const symX = 2*cx - x, symY = 2*cy - y;
+    return {
+      question: `Donner les coordonnées du symétrique du point $A(${x}\\,;\\,${y})$ par rapport au point $O(${cx}\\,;\\,${cy})$.`,
+      correction: `Pour trouver le symétrique de $A$ par rapport au centre $O$, le centre de symétrie $O$ doit être le milieu de $[AA']$.\n\nDonc :\n$$x_{A'} = 2 \\times ${cx} - (${x}) = ${2*cx} - (${x}) = ${symX}$$\n$$y_{A'} = 2 \\times ${cy} - (${y}) = ${2*cy} - (${y}) = ${symY}$$\n\nLe symétrique de $A$ par rapport à $O$ est $A'(${symX}\\,;\\,${symY})$.`
+    };
+  }
+
+  if (type === 2) {
+    // Symétrique d'un segment
+    const x1=rand(-4,4), y1=rand(-4,4), x2=rand(-4,4), y2=rand(-4,4);
+    const cx=rand(-2,2), cy=rand(-2,2);
+    const sAx=2*cx-x1, sAy=2*cy-y1, sBx=2*cx-x2, sBy=2*cy-y2;
+    const cStr = cx===0&&cy===0 ? `l'origine` : `$O(${cx}\\,;\\,${cy})$`;
+    return {
+      question: `Décrire comment construire le symétrique du segment $[AB]$ avec $A(${x1}\\,;\\,${y1})$ et $B(${x2}\\,;\\,${y2})$ par rapport au point $O(${cx}\\,;\\,${cy})$.`,
+      correction: `Pour construire le symétrique d'un segment par symétrie centrale de centre ${cStr} :\n\n1. On construit le symétrique $A'$ de $A$ : $A'(${sAx}\\,;\\,${sAy})$\n2. On construit le symétrique $B'$ de $B$ : $B'(${sBx}\\,;\\,${sBy})$\n3. Le symétrique du segment $[AB]$ est le segment $[A'B']$\n\n*Rappel : $O$ est le milieu de $[AA']$ et de $[BB']$.*`
+    };
+  }
+
+  // type 3 : symétrique d'un triangle
+  const pts = ['A','B','C'];
+  const coords = pts.map(()=>[rand(-4,4),rand(-4,4)]);
+  const cx=rand(-2,2), cy=rand(-2,2);
+  const syms = coords.map(([x,y])=>`(${2*cx-x}\\,;\\,${2*cy-y})`);
+  const cStr = cx===0&&cy===0 ? `l'origine $O$` : `le point $O(${cx}\\,;\\,${cy})$`;
+  return {
+    question: `Décrire comment construire le symétrique du triangle $ABC$ avec $A(${coords[0].join('\\,;\\,')})$, $B(${coords[1].join('\\,;\\,')})$ et $C(${coords[2].join('\\,;\\,')})$ par rapport à ${cStr}.`,
+    correction: `Pour construire le symétrique d'un triangle par symétrie centrale :\n\n1. On construit le symétrique de chaque sommet :\n   - $A'${syms[0]}$\n   - $B'${syms[1]}$\n   - $C'${syms[2]}$\n2. On relie $A'$, $B'$ et $C'$ pour obtenir le triangle $A'B'C'$\n\n*Le centre de symétrie $O$ est le milieu de chaque segment $[AA']$, $[BB']$ et $[CC']$.*`
+  };
+};
+
+G[103] = () => {
+  const figures = [
+    {
+      nom: 'un carré',
+      axes: 4,
+      desc: 'Les 4 axes de symétrie d\'un carré sont : les 2 diagonales et les 2 médiatrices des côtés opposés.',
+      hasAxe: true
+    },
+    {
+      nom: 'un rectangle (non carré)',
+      axes: 2,
+      desc: 'Les 2 axes de symétrie d\'un rectangle sont les médiatrices des côtés opposés (les droites passant par les milieux des côtés opposés).',
+      hasAxe: true
+    },
+    {
+      nom: 'un losange (non carré)',
+      axes: 2,
+      desc: 'Les 2 axes de symétrie d\'un losange sont ses deux diagonales.',
+      hasAxe: true
+    },
+    {
+      nom: 'un triangle équilatéral',
+      axes: 3,
+      desc: 'Les 3 axes de symétrie d\'un triangle équilatéral sont les 3 médiatrices (qui sont aussi les hauteurs et les médianes).',
+      hasAxe: true
+    },
+    {
+      nom: 'un triangle isocèle (non équilatéral)',
+      axes: 1,
+      desc: 'L\'unique axe de symétrie d\'un triangle isocèle est la médiatrice de la base (le côté non égal aux deux autres).',
+      hasAxe: true
+    },
+    {
+      nom: 'un triangle scalène (aux trois côtés différents)',
+      axes: 0,
+      desc: 'Un triangle scalène n\'a aucun axe de symétrie.',
+      hasAxe: false
+    },
+    {
+      nom: 'un cercle',
+      axes: -1,
+      desc: 'Un cercle possède une infinité d\'axes de symétrie : tous les diamètres sont des axes de symétrie.',
+      hasAxe: true
+    },
+    {
+      nom: 'un trapèze isocèle (non rectangle)',
+      axes: 1,
+      desc: 'Un trapèze isocèle possède un seul axe de symétrie : la médiatrice des deux bases parallèles.',
+      hasAxe: true
+    },
+    {
+      nom: 'un parallélogramme (non rectangle, non losange)',
+      axes: 0,
+      desc: 'Un parallélogramme quelconque n\'a aucun axe de symétrie.',
+      hasAxe: false
+    },
+  ];
+
+  const fig = pick(figures);
+  const axesStr = fig.axes === -1 ? 'une infinité' : fig.axes === 0 ? 'aucun' : fig.axes === 1 ? '1' : `${fig.axes}`;
+
+  return {
+    question: `Combien d'axes de symétrie possède ${fig.nom} ? Décrire ces axes.`,
+    correction: `${fig.nom.charAt(0).toUpperCase() + fig.nom.slice(1)} possède **${axesStr} axe${fig.axes > 1 || fig.axes === -1 ? 's' : ''}** de symétrie.\n\n${fig.desc}`
+  };
+};
+
+G[104] = () => {
+  const figures = [
+    {
+      nom: 'un carré',
+      centre: true,
+      desc: 'Le centre de symétrie d\'un carré est le point d\'intersection de ses diagonales.',
+    },
+    {
+      nom: 'un rectangle',
+      centre: true,
+      desc: 'Le centre de symétrie d\'un rectangle est le point d\'intersection de ses diagonales.',
+    },
+    {
+      nom: 'un losange',
+      centre: true,
+      desc: 'Le centre de symétrie d\'un losange est le point d\'intersection de ses diagonales.',
+    },
+    {
+      nom: 'un parallélogramme',
+      centre: true,
+      desc: 'Le centre de symétrie d\'un parallélogramme est le point d\'intersection de ses diagonales.',
+    },
+    {
+      nom: 'un cercle',
+      centre: true,
+      desc: 'Le centre de symétrie d\'un cercle est son centre.',
+    },
+    {
+      nom: 'un triangle quelconque',
+      centre: false,
+      desc: 'Un triangle n\'admet pas de centre de symétrie.',
+    },
+    {
+      nom: 'un triangle équilatéral',
+      centre: false,
+      desc: 'Un triangle équilatéral n\'admet pas de centre de symétrie (attention, il ne faut pas confondre avec le centre du cercle inscrit ou circonscrit).',
+    },
+    {
+      nom: 'un trapèze isocèle (non parallélogramme)',
+      centre: false,
+      desc: 'Un trapèze isocèle n\'admet pas de centre de symétrie.',
+    },
+  ];
+
+  const fig = pick(figures);
+
+  return {
+    question: `${fig.nom.charAt(0).toUpperCase() + fig.nom.slice(1)} admet-il un centre de symétrie ? Si oui, le décrire.`,
+    correction: `${fig.nom.charAt(0).toUpperCase() + fig.nom.slice(1)} **${fig.centre ? 'admet' : 'n\'admet pas'}** de centre de symétrie.\n\n${fig.desc}`
+  };
+};
+
+G[111] = () => {
+  const type = pick([1, 2]);
+  const echelles = [
+    { num: 1, den: 100,   str: '1/100',   label: '1 cm sur le plan = 1 m en réalité' },
+    { num: 1, den: 200,   str: '1/200',   label: '1 cm sur le plan = 2 m en réalité' },
+    { num: 1, den: 500,   str: '1/500',   label: '1 cm sur le plan = 5 m en réalité' },
+    { num: 1, den: 1000,  str: '1/1000',  label: '1 cm sur le plan = 10 m en réalité' },
+    { num: 1, den: 2000,  str: '1/2000',  label: '1 cm sur le plan = 20 m en réalité' },
+    { num: 1, den: 5000,  str: '1/5000',  label: '1 cm sur le plan = 50 m en réalité' },
+    { num: 1, den: 10000, str: '1/10000', label: '1 cm sur le plan = 100 m en réalité' },
+    { num: 1, den: 25000, str: '1/25000', label: '1 cm sur le plan = 250 m en réalité' },
+    { num: 1, den: 50000, str: '1/50000', label: '1 cm sur le plan = 500 m en réalité' },
+  ];
+  const ech = pick(echelles);
+
+  if (type === 1) {
+    // Mesure sur plan → réalité
+    const planCm = pick([1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15]);
+    const realCm = planCm * ech.den;
+    const realM = realCm / 100;
+    const realKm = realM / 1000;
+    let realStr;
+    if (realM >= 1000) realStr = `$${realKm}$ km`;
+    else if (realM >= 1) realStr = `$${realM}$ m`;
+    else realStr = `$${realCm}$ cm`;
+
+    return {
+      question: `Sur un plan à l'échelle $${ech.str}$, une route mesure $${planCm}$ cm. Quelle est la longueur réelle de cette route ?`,
+      correction: `L'échelle $${ech.str}$ signifie que ${ech.label}.\n\nLongueur réelle :\n\n$$${planCm} \\times ${ech.den} = ${realCm} \\text{ cm} = ${realStr}$$`
+    };
+  } else {
+    // Réalité → mesure sur plan
+    const realM = pick([10, 20, 25, 50, 100, 150, 200, 250, 500, 1000]);
+    const realCm = realM * 100;
+    const planCm = realCm / ech.den;
+    if (!Number.isInteger(planCm * 10)) return G[111]();
+    const planStr = Number.isInteger(planCm) ? `${planCm}` : `${planCm.toFixed(1)}`;
+
+    return {
+      question: `Sur un plan à l'échelle $${ech.str}$, quelle longueur doit-on tracer pour représenter une distance réelle de $${realM}$ m ?`,
+      correction: `L'échelle $${ech.str}$ signifie que ${ech.label}.\n\nLongueur sur le plan :\n\n$$${realCm} \\div ${ech.den} = ${planStr} \\text{ cm}$$`
+    };
+  }
+};
+
+G[112] = () => {
+  const echelles = [
+    { den: 100,   str: '1/100' },
+    { den: 200,   str: '1/200' },
+    { den: 500,   str: '1/500' },
+    { den: 1000,  str: '1/1000' },
+    { den: 2000,  str: '1/2000' },
+    { den: 5000,  str: '1/5000' },
+    { den: 10000, str: '1/10000' },
+    { den: 25000, str: '1/25000' },
+    { den: 50000, str: '1/50000' },
+  ];
+  const ech = pick(echelles);
+  const planCm = pick([1, 2, 3, 4, 5, 6, 8, 10]);
+  const realCm = planCm * ech.den;
+  const realM = realCm / 100;
+  const realKm = realM / 1000;
+
+  let realStr, realVal;
+  if (realM >= 1000) { realStr = `${realKm} km`; realVal = `${realKm} \\text{ km} = ${realM} \\text{ m} = ${realCm} \\text{ cm}`; }
+  else if (realM >= 1) { realStr = `${realM} m`; realVal = `${realM} \\text{ m} = ${realCm} \\text{ cm}`; }
+  else { realStr = `${realCm} cm`; realVal = `${realCm} \\text{ cm}`; }
+
+  const objet = pick(['une route', 'un bâtiment', 'un terrain de foot', 'une rivière', 'un chemin']);
+
+  return {
+    question: `Sur un plan, ${objet} mesure $${planCm}$ cm. En réalité, ${objet === 'une rivière' || objet === 'une route' || objet === 'un chemin' ? 'elle' : 'il'} mesure $${realStr}$. Déterminer l'échelle de ce plan.`,
+    correction: `On convertit la mesure réelle en centimètres : $${realVal}$\n\nL'échelle est le rapport :\n\n$$\\frac{\\text{mesure sur le plan}}{\\text{mesure réelle}} = ${frac(planCm, realCm)} = ${frac(1, ech.den)}$$\n\nL'échelle du plan est $${ech.str}$.`
+  };
+};
+
+G[113] = () => {
+  const type = pick([1, 2, 3]);
+
+  // Pourcentages "sympas"
+  const pourcentages = [5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 80];
+
+  if (type === 1) {
+    // p% d'une quantité
+    const p = pick(pourcentages);
+    const total = pick([20, 40, 50, 60, 80, 100, 120, 150, 200, 250, 300, 400, 500]);
+    const res = total * p / 100;
+    if (!Number.isInteger(res)) return G[113]();
+    const ctx = pick([
+      { q: `Dans une classe de $${total}$ élèves, $${p}\\%$ ont eu la moyenne. Combien d'élèves ont eu la moyenne ?`, unit: 'élèves' },
+      { q: `Un article coûte $${total}$ €. Il bénéficie d'une réduction de $${p}\\%$. Calculer le montant de la réduction.`, unit: '€' },
+      { q: `Un stade contient $${total}$ places. $${p}\\%$ sont occupées. Combien de places sont occupées ?`, unit: 'places' },
+    ]);
+    const c = pick(ctx);
+    return {
+      question: `${c.q}`,
+      correction: `Pour calculer $${p}\\%$ de $${total}$ :\n\n$$${total} \\times ${frac(p, 100)} = ${frac(total * p, 100)} = ${res} \\text{ ${c.unit}}$$`
+    };
+  }
+
+  if (type === 2) {
+    // Augmentation/réduction en %
+    const p = pick(pourcentages);
+    const total = pick([50, 80, 100, 120, 150, 200, 250, 300, 400]);
+    const isAug = pick([true, false]);
+    const montant = total * p / 100;
+    if (!Number.isInteger(montant)) return G[113]();
+    const res = isAug ? total + montant : total - montant;
+    const coeff = isAug ? (100 + p) : (100 - p);
+
+    return {
+      question: `Un article coûte $${total}$ €. Son prix ${isAug ? 'augmente' : 'diminue'} de $${p}\\%$. Quel est le nouveau prix ?`,
+      correction: `**Méthode :** on calcule $${p}\\%$ de $${total}$ puis on ${isAug ? 'ajoute' : 'soustrait'}.\n\n$$${total} \\times ${frac(p, 100)} = ${montant} \\text{ €}$$\n\nNouveau prix :\n\n$$${total} ${isAug ? '+' : '-'} ${montant} = ${res} \\text{ €}$$`
+    };
+  }
+
+  // type 3 : coefficient multiplicateur
+  const p = pick(pourcentages);
+  const total = pick([50, 80, 100, 120, 150, 200, 250, 300]);
+  const isAug = pick([true, false]);
+  const coeff = isAug ? (100 + p) / 100 : (100 - p) / 100;
+  const res = total * coeff;
+  if (!Number.isInteger(res)) return G[113]();
+
+  return {
+    question: `Un article coûte $${total}$ €. Son prix ${isAug ? 'augmente' : 'diminue'} de $${p}\\%$. Quel est le nouveau prix en utilisant le coefficient multiplicateur ?`,
+    correction: `Une ${isAug ? 'augmentation' : 'diminution'} de $${p}\\%$ correspond à multiplier par $${frac(100 + (isAug ? p : -p), 100)} = ${coeff}$.\n\n$$${total} \\times ${coeff} = ${res} \\text{ €}$$`
+  };
+};
+
+G[114] = () => {
+  const type = pick([1, 2]);
+
+  if (type === 1) {
+    // Calculer le pourcentage qu'une partie représente d'un tout
+    const total = pick([20, 25, 40, 50, 60, 80, 100, 120, 150, 200]);
+    const p = pick([5, 10, 15, 20, 25, 30, 40, 50, 60, 75]);
+    const part = total * p / 100;
+    if (!Number.isInteger(part)) return G[114]();
+
+    const ctx = pick([
+      { q: `Dans une classe de $${total}$ élèves, $${part}$ ont eu la moyenne. Quel pourcentage d'élèves a eu la moyenne ?` },
+      { q: `Sur $${total}$ élèves interrogés, $${part}$ préfèrent les maths. Quel pourcentage cela représente-t-il ?` },
+      { q: `Un sac contient $${total}$ billes dont $${part}$ sont rouges. Quel pourcentage de billes rouges y a-t-il ?` },
+    ]);
+
+    return {
+      question: pick(ctx).q,
+      correction: `On calcule le rapport $${frac('\\text{partie}', '\\text{total}')}$ puis on multiplie par $100$ :\n\n$$${frac(part, total)} \\times 100 = ${frac(part * 100, total)} = ${p} \\%$$`
+    };
+  }
+
+  // type 2 : trouver le pourcentage d'évolution
+  const initial = pick([50, 80, 100, 120, 150, 200]);
+  const p = pick([5, 10, 15, 20, 25, 30, 40, 50]);
+  const isAug = pick([true, false]);
+  const final = isAug ? initial + initial * p / 100 : initial - initial * p / 100;
+  if (!Number.isInteger(final)) return G[114]();
+
+  return {
+    question: `Un article coûtait $${initial}$ €. Son prix est maintenant de $${final}$ €. Calculer le pourcentage d'${isAug ? 'augmentation' : 'diminution'}.`,
+    correction: `On calcule la variation puis on divise par le prix initial :\n\n$$\\text{Variation} = ${final} - ${initial} = ${isAug ? '+' : ''}${final - initial} \\text{ €}$$\n\n$$\\text{Pourcentage} = ${frac(Math.abs(final - initial), initial)} \\times 100 = ${p} \\%$$\n\nLe prix a ${isAug ? 'augmenté' : 'diminué'} de $${p}\\%$.`
   };
 };
 
