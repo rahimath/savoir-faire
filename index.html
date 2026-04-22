@@ -86,6 +86,7 @@ body::before { content: ''; position: fixed; top: 0; right: 0; width: 100%; heig
 
 /* ── EXERCISE CARD ── */
 #exercise-panel { display: none; width: 100%; max-width: 680px; }
+#welcome { display: none; }
 .skill-badge { display: inline-flex; align-items: center; gap: 8px; font-size: .72rem; color: var(--ink-soft); margin-bottom: 20px; background: var(--paper); border: 1.5px solid var(--border); border-radius: 20px; padding: 5px 12px; }
 .skill-badge code { font-family: 'DM Mono', monospace; font-size: .7rem; color: var(--accent); font-weight: 500; }
 .card { background: var(--paper); border: 1.5px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; }
@@ -94,7 +95,7 @@ body::before { content: ''; position: fixed; top: 0; right: 0; width: 100%; heig
 
 /* Question & answer content */
 #question-text, #answer-text { font-family: 'Lora', serif; font-size: 1.05rem; line-height: 1.8; color: var(--ink); }
-#question-text p, #answer-text p { margin-bottom: .65em; }
+#question-text p, #answer-text p { margin-bottom: .4em; }
 #question-text p:last-child, #answer-text p:last-child { margin-bottom: 0; }
 #question-text ul, #question-text ol { margin-top: 0; margin-bottom: .65em; padding-left: 1.5em; }
 #answer-text strong { font-weight: 600; color: var(--green); }
@@ -136,7 +137,7 @@ body::before { content: ''; position: fixed; top: 0; right: 0; width: 100%; heig
 
 <aside id="sidebar">
   <div class="sidebar-header">
-    <h1>Savoir-faire・5ème</h1>
+    <h1 style="cursor:pointer;" onclick="goHome()">Savoir-faire・5ème</h1>
     <p>Sélectionne un savoir-faire pour t'entraîner</p>
   </div>
   <div class="sidebar-scroll" id="sidebar-scroll"></div>
@@ -1121,91 +1122,322 @@ G[61] = () => {
 };
 
 G[62] = () => {
-  const b=rand(2,9), q0=rand(3,12);
-  const mult=b*q0, autre=mult+rand(1,b-1);
-  const type=pick(['multiple','diviseur']);
-  if(type==='multiple') {
-    return {
-      question: `$${mult}$ est-il un multiple de $${b}$ ? Et $${autre}$ ? Justifie.`,
-      correction: `- $${mult} = ${b} \\times ${q0}$, donc $${mult}$ **est** un multiple de $${b}$.\n- $${autre} = ${b} \\times ${q0} + ${autre-mult}$, le reste est non nul, donc $${autre}$ **n'est pas** un multiple de $${b}$.`
-    };
+  const qType = pick([1, 2]);
+  const isTrue = Math.random() < 0.5;
+
+  const n2 = rand(3, 12);
+  const k = rand(3, 12);
+  const trueN1 = n2 * k;
+  const offset = pick([1, -1, 2, -2]);
+  const falseN1 = trueN1 + offset;
+  const n1 = isTrue ? trueN1 : falseN1;
+
+  let question, correction;
+
+  if (qType === 1) {
+    // "(n1) est-il un multiple de (n2) ?"
+    question = `$${n1}$ est-il un multiple de $${n2}$ ?`;
+    if (isTrue) {
+      correction = `On a : $${n1} = ${n2} \\times ${k}$\n\nDonc, $${n1}$ est un multiple de $${n2}$`;
+    } else {
+      correction = `$${n1}$ n'est pas dans la table de $${n2}$\n\nDonc, $${n1}$ n'est pas un multiple de $${n2}$`;
+    }
   } else {
-    return {
-      question: `$${b}$ est-il un diviseur de $${mult}$ ? Et de $${autre}$ ? Justifie.`,
-      correction: `- $${mult} = ${b} \\times ${q0}$, donc $${b}$ **est** un diviseur de $${mult}$.\n- $${autre} \\div ${b} = ${q0}$ reste $${autre-mult}$ ≠ 0, donc $${b}$ **n'est pas** un diviseur de $${autre}$.`
-    };
+    // "(n2) est-il un diviseur de (n1) ?"
+    question = `$${n2}$ est-il un diviseur de $${n1}$ ?`;
+    if (isTrue) {
+      correction = `On a : $${n1} = ${n2} \\times ${k}$\n\nDonc, $${n2}$ est un diviseur de $${n1}$`;
+    } else {
+      correction = `$${n1}$ n'est pas dans la table de $${n2}$\n\nDonc, $${n2}$ n'est pas un diviseur de $${n1}$`;
+    }
   }
+
+  return { question, correction };
 };
 
 G[63] = () => {
-  const n=pick([12,18,24,30,36,48,60]);
-  const divs=[];
-  for(let i=1;i<=n;i++) if(n%i===0) divs.push(i);
+  // Nombres composés entre 6 et 144, pondérés selon le nombre de diviseurs
+  const candidates = [];
+  for (let n = 6; n <= 144; n++) {
+    const divs = [];
+    for (let i = 1; i <= n; i++) { if (n % i === 0) divs.push(i); }
+    if (divs.length >= 4) { // au moins 3 diviseurs autres que 1 et n
+      const weight = divs.length >= 10 ? 5 : divs.length >= 7 ? 3 : 1;
+      for (let w = 0; w < weight; w++) candidates.push({n, divs});
+    }
+  }
+
+  const small = candidates.filter(c => c.n <= 100);
+  const large = candidates.filter(c => c.n > 100);
+  const pool = Math.random() < 0.7 ? small : large;
+  const {n, divs} = pick(pool);
+
+  // Construire les paires de multiplication (a × b avec a <= b)
+  const pairs = [];
+  for (let i = 0; i < divs.length; i++) {
+    const a = divs[i], b = n / a;
+    if (a <= b) pairs.push([a, b]);
+  }
+
+  const multLines = pairs.map(([a, b]) => `$${n} = ${a} \\times ${b}$`).join('\n\n');
+  const divisorsList = divs.join(', ');
+
   return {
-    question: `Donne la liste de tous les diviseurs de $${n}$.`,
-    correction: `On teste chaque entier de $1$ à $${n}$ :\n\nLes diviseurs de $${n}$ sont : $${divs.join('$, $')}$\n\n*(${divs.length} diviseurs au total)*`
+    question: `Donner la liste de tous les diviseurs de $${n}$`,
+    correction: `On cherche les multiplications d'entiers égales à $${n}$ :\n\n${multLines}\n\nDonc, les diviseurs de $${n}$ sont : $${divisorsList}$`
   };
 };
 
 G[64] = () => {
-  const c=pick([2,3,5,9,10]);
-  const n=rand(100,999);
-  const div=n%c===0;
-  const criteres = {
-    2:`Un entier est divisible par $2$ si son chiffre des unités est $0$, $2$, $4$, $6$ ou $8$.`,
-    3:`Un entier est divisible par $3$ si la somme de ses chiffres est divisible par $3$.`,
-    5:`Un entier est divisible par $5$ si son chiffre des unités est $0$ ou $5$.`,
-    9:`Un entier est divisible par $9$ si la somme de ses chiffres est divisible par $9$.`,
-    10:`Un entier est divisible par $10$ si son chiffre des unités est $0$.`,
+  const d = pick([2, 3, 5, 9, 10]);
+  const isTrue = Math.random() < 0.5;
+
+  let n;
+  do {
+    n = rand(1000, 99999);
+  } while ((n % d === 0) !== isTrue);
+
+  const fmt = n => {
+    const s = String(n);
+    if (s.length <= 3) return s;
+    const right = s.slice(-3);
+    const left  = s.slice(0, s.length - 3);
+    return `${left}\\,${right}`;
   };
-  const digits=[...String(n)].map(Number);
-  const somme=digits.reduce((s,x)=>s+x,0);
-  const justif = (c===2||c===5||c===10)
-    ? `Le chiffre des unités de $${n}$ est $${n%10}$.`
-    : `La somme des chiffres de $${n}$ est $${digits.join('+')}=${somme}$, qui ${somme%c===0?'est':'n\'est pas'} divisible par $${c}$.`;
+
+  const digits = [...String(n)].map(Number);
+  const sumDigits = digits.reduce((s, x) => s + x, 0);
+  const unite = n % 10;
+
+  const criteres = {
+    2:  `Un entier est divisible par $2$ si son chiffre des unités est $0, 2, 4, 6$ ou $8$`,
+    3:  `Un entier est divisible par $3$ si la somme de ses chiffres est divisible par $3$`,
+    5:  `Un entier est divisible par $5$ si son chiffre des unités est $0$ ou $5$`,
+    9:  `Un entier est divisible par $9$ si la somme de ses chiffres est divisible par $9$`,
+    10: `Un entier est divisible par $10$ si son chiffre des unités est $0$`,
+  };
+
+  let justif;
+  if (d === 2 || d === 5 || d === 10) {
+    justif = `Le chiffre des unités de $${fmt(n)}$ est $${unite}$`;
+  } else {
+    const sumExpr = digits.join(' + ');
+    const divOrNot = isTrue ? `qui est divisible par $${d}$` : `qui n'est pas divisible par $${d}$`;
+    justif = `La somme des chiffres de $${fmt(n)}$ est : $${sumExpr} = ${sumDigits}$, ${divOrNot}`;
+  }
+
+  const conclusion = isTrue
+    ? `Donc, $${fmt(n)}$ est divisible par $${d}$`
+    : `Donc, $${fmt(n)}$ n'est pas divisible par $${d}$`;
+
   return {
-    question: `Le nombre $${n}$ est-il divisible par $${c}$ ? Utilise le critère de divisibilité.`,
-    correction: `**Critère :** ${criteres[c]}\n\n${justif}\n\n**Conclusion :** $${n}$ **${div?'est':'n\'est pas'}** divisible par $${c}$.`
+    question: `Le nombre $${fmt(n)}$ est-il divisible par $${d}$ ? Utiliser le critère de divisibilité.`,
+    correction: `${criteres[d]}\n\n${justif}\n\n${conclusion}`
   };
 };
 
 G[65] = () => {
-  const primes=[2,3,5,7,11,13,17,19,23,29,31,37];
-  const composites=[4,6,8,9,10,12,14,15,16,18,20,21,22,25];
-  const p=pick(primes), comp=pick(composites);
-  const [x,y]=shuffle([p,comp]);
-  // Find a divisor of the composite
-  const findDiv = n => { for(let i=2;i<n;i++) if(n%i===0) return i; return n; };
-  const d=findDiv(comp);
+  const primesTo100 = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97];
+  const composites = [];
+  for (let i = 2; i <= 100; i++) {
+    if (!primesTo100.includes(i)) {
+      // Chercher la meilleure paire : deux facteurs < 10 si possible, sinon le plus petit diviseur
+      let bestA = null, bestB = null;
+      for (let j = 2; j <= Math.sqrt(i); j++) {
+        if (i % j === 0) {
+          const k = i / j;
+          if (j < 10 && k < 10) { bestA = j; bestB = k; break; } // paire idéale
+          if (bestA === null) { bestA = j; bestB = k; } // fallback : première paire trouvée
+        }
+      }
+      const divCount = [];
+      for (let j = 1; j <= i; j++) { if (i % j === 0) divCount.push(j); }
+      const weight = divCount.length <= 4 ? 4 : divCount.length <= 6 ? 2 : 1;
+      for (let w = 0; w < weight; w++) composites.push({n: i, a: bestA, b: bestB});
+    }
+  }
+
+  const isTrue = Math.random() < 0.5;
+  const def = `Un nombre premier est un nombre qui possède exactement deux diviseurs : $1$ et lui-même.`;
+
+  let n, justif, conclusion;
+
+  if (isTrue) {
+    n = pick(primesTo100);
+    justif = `Les seuls diviseurs de $${n}$ sont $1$ et $${n}$`;
+    conclusion = `Donc, $${n}$ est un nombre premier.`;
+  } else {
+    const c = pick(composites);
+    n = c.n;
+    const d = c.smallDiv;
+    justif = `On a : $${n} = ${c.a} \\times ${c.b}$`;
+    conclusion = `Donc, $${n}$ n'est pas un nombre premier.`;
+  }
+
   return {
-    question: `Parmi $${x}$ et $${y}$, lequel est un nombre premier ? Justifie.`,
-    correction: `**Rappel :** un nombre premier est un entier > 1 qui n'a que deux diviseurs : $1$ et lui-même.\n\n- $${p}$ est **premier** (ses seuls diviseurs sont $1$ et $${p}$).\n- $${comp}$ n'est **pas premier** : $${comp} = ${d} \\times ${comp/d}$.`
+    question: `$${n}$ est-il un nombre premier ? Justifier.`,
+    correction: `${def}\n\n${justif}\n\n${conclusion}`
   };
 };
 
 G[66] = () => {
-  const n=pick([12,18,24,30,36,42,48,60,72]);
-  // Find prime factorization
-  const factors=[];
-  let tmp=n;
-  for(let p=2;p<=tmp;p++) while(tmp%p===0){factors.push(p);tmp/=p;}
-  const decoStr=factors.join(' \\times ');
+  // Factorisation complète
+  const factorize = n => {
+    const f = [];
+    let t = n;
+    for (let p = 2; p <= t; p++) while (t % p === 0) { f.push(p); t /= p; }
+    return f;
+  };
+
+  // Nombre de diviseurs
+  const countDivs = n => {
+    let c = 0;
+    for (let i = 1; i <= n; i++) { if (n % i === 0) c++; }
+    return c;
+  };
+
+  // Construire les candidats
+  const smallPrimes = [2, 3, 5, 7, 11];
+  const hasOnlySmallPrimes = n => factorize(n).every(p => smallPrimes.includes(p));
+
+  const small = [], large = [];
+  for (let n = 10; n <= 150; n++) {
+    const factors = factorize(n);
+    if (factors.length >= 2 && countDivs(n) >= 5) {
+      const weight = (factors.length >= 5 ? 4 : factors.length >= 4 ? 3 : factors.length >= 3 ? 2 : 1)
+                   * (hasOnlySmallPrimes(n) ? 3 : 1);
+      for (let w = 0; w < weight; w++) (n <= 100 ? small : large).push(n);
+    }
+  }
+
+  const n = Math.random() < 0.7 ? pick(small) : pick(large);
+  const factors = factorize(n);
+
+  // Construire les étapes de décomposition progressive
+  // À chaque étape, on remplace le premier nombre non-premier par sa décomposition
+  const isPrime = x => { if (x < 2) return false; for (let i = 2; i <= Math.sqrt(x); i++) if (x % i === 0) return false; return true; };
+
+  const steps = [];
+  // État initial : [n]
+  let current = [n];
+  steps.push([...current]);
+
+  while (!current.every(isPrime)) {
+    // Trouver le premier nombre non-premier
+    const idx = current.findIndex(x => !isPrime(x));
+    const x = current[idx];
+    // Trouver le plus petit facteur premier de x
+    let p = 2;
+    while (x % p !== 0) p++;
+    const q = x / p;
+    // Remplacer x par [p, q]
+    current = [...current.slice(0, idx), p, q, ...current.slice(idx + 1)];
+    steps.push([...current]);
+  }
+
+  // Construire les lignes aligned
+  // 1ère ligne : n = steps[0] (= n seul, pas utile) → on part de steps[1]
+  const lines = steps.slice(1).map(s => `&= ${s.join(' \\times ')}`);
+  const aligned = `$$\\begin{aligned}\n  ${n} ${lines.join(' \\\\[3pt]\n  ')}\n\\end{aligned}$$`;
+
+  const finalProduct = factors.join(' \\times ');
+
   return {
-    question: `Décompose $${n}$ en produit de facteurs premiers.`,
-    correction: `On divise successivement par les nombres premiers :\n\n$$${n} = ${decoStr}$$\n\n*Vérification : $${factors.join(' \\times ')} = ${n}$ ✓*`
+    question: `Décomposer $${n}$ en produit de facteurs premiers.`,
+    correction: `On décompose chaque nombre en produit, jusqu'à n'obtenir que des nombres premiers :\n\n${aligned}\n\nDonc :\n\n$$${n} = ${finalProduct}$$`
   };
 };
 
 G[67] = () => {
-  const p=pick([2,3,5]), q=pick([2,3,5]), m=rand(2,4);
-  const n=p*q*m, d=q*q*m;
-  const g=pgcd(n,d);
+  const factorize = n => {
+    const f = []; let t = n;
+    for (let p = 2; p <= t; p++) while (t % p === 0) { f.push(p); t /= p; }
+    return f;
+  };
+  const countDivs = n => { let c = 0; for (let i = 1; i <= n; i++) if (n % i === 0) c++; return c; };
+
+  const smallPrimes = [2, 3, 5, 7, 11];
+  const hasOnlySmallPrimes = n => factorize(n).every(p => smallPrimes.includes(p));
+
+  const small = [], large = [];
+  for (let n = 10; n <= 150; n++) {
+    const f = factorize(n);
+    if (f.length >= 3 && countDivs(n) >= 5) {
+      const weight = hasOnlySmallPrimes(n) ? 3 : 1;
+      for (let w = 0; w < weight; w++) (n <= 100 ? small : large).push(n);
+    }
+  }
+
+  // Chercher une paire (a, b) avec au moins un facteur commun et a/b non entier
+  let a, b, fa, fb;
+  let attempts = 0;
+  do {
+    const poolA = Math.random() < 0.65 ? small : large;
+    const poolB = Math.random() < 0.65 ? small : large;
+    a = pick(poolA);
+    b = pick(poolB);
+    fa = factorize(a);
+    fb = factorize(b);
+    const fbCopy = [...fb];
+    let commonCount = 0;
+    for (const p of fa) {
+      const idx = fbCopy.indexOf(p);
+      if (idx !== -1) { commonCount++; fbCopy.splice(idx, 1); }
+    }
+    // 70% de chances d'exiger au moins 2 facteurs communs
+    const minCommon = Math.random() < 0.70 ? 2 : 1;
+    if (a === b || a % b === 0 || b % a === 0 || commonCount < minCommon) { attempts++; continue; }
+    break;
+  } while (attempts < 500);
+
+  // Trouver les facteurs communs (en tenant compte des multiplicités)
+  const cancelFactors = [];
+  const fbCopy = [...fb];
+  for (const p of fa) {
+    const idx = fbCopy.indexOf(p);
+    if (idx !== -1) { cancelFactors.push(p); fbCopy.splice(idx, 1); }
+  }
+
+  // Facteurs restants après simplification
+  const faRemaining = [...fa];
+  const fbRemaining = [...fb];
+  for (const p of cancelFactors) {
+    faRemaining.splice(faRemaining.indexOf(p), 1);
+    fbRemaining.splice(fbRemaining.indexOf(p), 1);
+  }
+
+  const g = pgcd(a, b);
+  const simplN = a / g, simplD = b / g;
+
+  // Construire l'affichage avec \cancel sur les facteurs communs
+  const buildWithCancel = (factors, cancelList) => {
+    const cancelCopy = [...cancelList];
+    return factors.map(p => {
+      const idx = cancelCopy.indexOf(p);
+      if (idx !== -1) { cancelCopy.splice(idx, 1); return `\\cancel{${p}}`; }
+      return `${p}`;
+    }).join(' \\times ');
+  };
+
+  const faWithCancel = buildWithCancel(fa, cancelFactors);
+  const fbWithCancel = buildWithCancel(fb, cancelFactors);
+
+  // Fraction après suppression des \cancel (facteurs restants)
+  const faRemainingStr = faRemaining.length > 1 ? faRemaining.join(' \\times ') : faRemaining.length === 1 ? `${faRemaining[0]}` : `1`;
+  const fbRemainingStr = fbRemaining.length > 1 ? fbRemaining.join(' \\times ') : fbRemaining.length === 1 ? `${fbRemaining[0]}` : `1`;
+
+  // N'afficher l'étape intermédiaire (sans cancel) que si les restes ont plusieurs facteurs
+  const showMid = faRemaining.length > 1 || fbRemaining.length > 1;
+
+  const corrLine = showMid
+    ? `${frac(a, b)} = ${frac(faWithCancel, fbWithCancel)} = ${frac(faRemainingStr, fbRemainingStr)} = ${frac(simplN, simplD)}`
+    : `${frac(a, b)} = ${frac(faWithCancel, fbWithCancel)} = ${frac(simplN, simplD)}`;
+
   return {
-    question: `Simplifie la fraction $${frac(n,d)}$ en utilisant la décomposition en facteurs premiers.`,
-    correction: `Décomposons :\n- $${n} = ${[...factorize(n)].join(' \\times ')}$\n- $${d} = ${[...factorize(d)].join(' \\times ')}$\n\n$$${frac(n,d)} = ${frac(n+'/'+g, d+'/'+g)} = ${simplFrac(n,d)}$$`
+    question: `Simplifier en utilisant les décompositions en produit de facteurs premiers :\n\n$$${frac(a, b)}$$`,
+    correction: `On décompose le numérateur et le dénominateur :\n\n- $${a} = ${fa.join(' \\times ')}$\n- $${b} = ${fb.join(' \\times ')}$\n\nAinsi :\n\n$$${corrLine}$$`
   };
 };
-function factorize(n){const f=[];let t=n;for(let p=2;p<=t;p++)while(t%p===0){f.push(p);t/=p;}return f;}
 
 // ── SÉQUENCE 7 : Proportionnalité ─────────────────────────────────────────────
 G[71] = () => {
@@ -2103,6 +2335,7 @@ function selectSkill(code, name) {
   document.getElementById('badge-name').textContent = name;
   document.getElementById('welcome').style.display = 'none';
   document.getElementById('exercise-panel').style.display = 'block';
+  window.location.hash = code;
   loadQuestion();
 }
 
@@ -2147,6 +2380,32 @@ function loadQuestion() {
   const {question, correction} = gen();
   aEl.dataset.raw = correction;
   renderContent(question, qEl);
+}
+
+window.addEventListener('load', () => {
+  const hash = window.location.hash.replace('#','');
+  if (hash) {
+    const skill = ALL_SKILLS.find(s => s.code == hash);
+    if (skill) {
+      document.querySelectorAll('.chapter').forEach(ch => {
+        const match = [...ch.querySelectorAll('.skill-item')].find(el => el.dataset.code == hash);
+        if (match) { ch.classList.add('open'); setTimeout(()=>match.scrollIntoView({block:'nearest',behavior:'smooth'}),60); }
+      });
+      selectSkill(skill.code, skill.name);
+    } else {
+      document.getElementById('welcome').style.display = 'block';
+    }
+  } else {
+    document.getElementById('welcome').style.display = 'block';
+  }
+});
+
+function goHome() {
+  currentSkill = null;
+  document.querySelectorAll('.skill-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('welcome').style.display = 'block';
+  document.getElementById('exercise-panel').style.display = 'none';
+  window.location.hash = '';
 }
 
 </script>
