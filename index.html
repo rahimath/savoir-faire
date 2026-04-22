@@ -1095,16 +1095,109 @@ G[55] = () => {
 };
 
 G[56] = () => {
-  const d1=pick([2,3,4,5,6]), d2=pick([2,3,4,5,6]);
-  let n1=rand(1,d1), n2=rand(1,d2);
-  const op=pick(['+','-']);
-  const lcd=ppcm(d1,d2);
-  const nn1=n1*(lcd/d1), nn2=n2*(lcd/d2);
-  const res=op==='+'?nn1+nn2:nn1-nn2;
-  const g=pgcd(Math.abs(res),lcd);
+  const op = pick(['+', '-']);
+  const r = Math.random();
+  const type = r < 0.20 ? 1 : r < 0.60 ? 2 : 3;
+  const wantSimpl = Math.random() < 0.40;
+
+  let d1, d2, n1, n2, lcd;
+  let attempts = 0;
+
+  do {
+    attempts++;
+    if (attempts > 500) break;
+
+    if (type === 1) {
+      // d1 grand, d2 diviseur de d1, d1 >= 3*d2
+      d2 = rand(2, 9);
+      const minMult = 3;
+      const maxMult = Math.floor(29 / d2);
+      if (maxMult < minMult) continue;
+      const mult = rand(minMult, maxMult);
+      d1 = d2 * mult;
+      lcd = d1;
+    } else if (type === 2) {
+      do { d1 = rand(2, 12); d2 = rand(2, 12); }
+      while (d1 === d2 || pgcd(d1, d2) !== 1 || d1 * d2 > 99);
+      lcd = d1 * d2;
+    } else {
+      do { d1 = rand(2, 12); d2 = rand(2, 12); }
+      while (d1 === d2 || pgcd(d1, d2) <= 1 || d2 % d1 === 0 || d1 % d2 === 0 || ppcm(d1, d2) > 99);
+      lcd = ppcm(d1, d2);
+    }
+
+    const m1 = lcd / d1, m2 = lcd / d2;
+    const maxN1 = d1 - 1;
+    const maxN2 = d2 - 1;
+    if (maxN1 < 1 || maxN2 < 1) continue;
+    n1 = rand(1, maxN1);
+    n2 = rand(1, maxN2);
+
+    if (n1 === n2) continue;
+    if (d1 === d2) continue;
+    if (n1 === d1 || n2 === d2) continue;
+
+    const nn1 = n1 * m1, nn2 = n2 * m2;
+    const resN = op === '+' ? nn1 + nn2 : nn1 - nn2;
+    if (resN <= 0) continue;
+
+    const g = pgcd(resN, lcd);
+    if (wantSimpl && g === 1) continue;
+    if (!wantSimpl && g !== 1) continue;
+
+    break;
+  } while (true);
+
+  const m1 = lcd / d1, m2 = lcd / d2;
+  const nn1 = n1 * m1, nn2 = n2 * m2;
+
+  // Ordre aléatoire, mais pour la soustraction on s'assure que qnn_a > qnn_b
+  let swapped = pick([true, false]);
+  let [qa_n, qa_d, qb_n, qb_d, ma, mb] = swapped
+    ? [n2, d2, n1, d1, m2, m1]
+    : [n1, d1, n2, d2, m1, m2];
+  let qnn_a = qa_n * ma, qnn_b = qb_n * mb;
+
+  if (op === '-' && qnn_a < qnn_b) {
+    [qa_n, qa_d, qb_n, qb_d, ma, mb] = [qb_n, qb_d, qa_n, qa_d, mb, ma];
+    qnn_a = qa_n * ma;
+    qnn_b = qb_n * mb;
+  }
+
+  const resN = op === '+' ? qnn_a + qnn_b : qnn_a - qnn_b;
+  const g = pgcd(resN, lcd);
+  const resSimpl = g > 1 ? ` = ${frac(resN / g, lcd / g)}` : '';
+  const opWord = op === '+' ? 'additionne' : 'soustrait';
+
+  const expr = `${frac(qa_n, qa_d)} ${op} ${frac(qb_n, qb_d)}`;
+
+  // Construire l'étape intermédiaire selon le type
+  let stepMul, stepResult;
+
+  if (type === 1) {
+    // La fraction avec le grand dénominateur (lcd) reste telle quelle
+    // qa_d ou qb_d est lcd
+    if (qa_d === lcd) {
+      // qa reste telle quelle, qb est multipliée
+      stepMul = `${frac(qa_n, qa_d)} ${op} ${frac(`${qb_n} \\times ${mb}`, `${qb_d} \\times ${mb}`)}`;
+      stepResult = `${frac(qnn_a, lcd)} ${op} ${frac(qnn_b, lcd)}`;
+    } else {
+      // qb reste telle quelle, qa est multipliée
+      stepMul = `${frac(`${qa_n} \\times ${ma}`, `${qa_d} \\times ${ma}`)} ${op} ${frac(qb_n, qb_d)}`;
+      stepResult = `${frac(qnn_a, lcd)} ${op} ${frac(qnn_b, lcd)}`;
+    }
+  } else {
+    stepMul = `${frac(`${qa_n} \\times ${ma}`, `${qa_d} \\times ${ma}`)} ${op} ${frac(`${qb_n} \\times ${mb}`, `${qb_d} \\times ${mb}`)}`;
+    stepResult = `${frac(qnn_a, lcd)} ${op} ${frac(qnn_b, lcd)}`;
+  }
+
+  const stepFinal = `${frac(resN, lcd)}${resSimpl}`;
+
+  const corrLine = `${expr} = ${stepMul} = ${stepResult} = ${stepFinal}`;
+
   return {
-    question: `Calcule $${frac(n1,d1)} ${op} ${frac(n2,d2)}$.`,
-    correction: `On réduit au même dénominateur ($PPCM(${d1},${d2}) = ${lcd}$) :\n\n$$${frac(n1,d1)} ${op} ${frac(n2,d2)} = ${frac(nn1,lcd)} ${op} ${frac(nn2,lcd)} = ${frac(res,lcd)}${g>1?' = '+simplFrac(Math.abs(res),lcd):''}$$`
+    question: `Calculer et simplifier éventuellement le résultat :\n\n$$${expr}$$`,
+    correction: `On met les fractions au même dénominateur, puis on ${opWord} les numérateurs :\n\n$$${corrLine}$$`
   };
 };
 
@@ -1496,13 +1589,36 @@ G[75] = () => {
 
 // ── SÉQUENCE 8 : Nombres relatifs et calculs ──────────────────────────────────
 G[81] = () => {
-  const a=rand(-10,10), b=rand(-10,10), r=a+b;
-  const regle = (a>=0&&b>=0) ? `même signe positif : on additionne les valeurs absolues`
-    : (a<=0&&b<=0) ? `même signe négatif : on additionne les valeurs absolues et on garde le signe –`
-    : `signes opposés : on soustrait les valeurs absolues et on garde le signe du plus grand`;
+  const type = pick([1, 2, 3]);
+  const a = rand(1, 19), b = rand(1, 19);
+
+  let expr, corrText;
+
+  if (type === 1) {
+    // a + (-b)
+    const res = a - b;
+    expr = `${a} + (-${b})`;
+    const resStr = res >= 0 ? `${res}` : `${res}`;
+    corrText = `On utilise la règle des signes : $+\\,(\\,- \\ldots\\,) = - \\ldots$\n\n$$${a} + (-${b}) = ${a} - ${b} = ${resStr}$$`;
+  }
+
+  else if (type === 2) {
+    // -a + b
+    const res = -a + b;
+    expr = `-${a} + ${b}`;
+    corrText = `$$-${a} + ${b} = ${res}$$`;
+  }
+
+  else {
+    // -a + (-b)
+    const res = -(a + b);
+    expr = `-${a} + (-${b})`;
+    corrText = `On utilise la règle des signes : $+\\,(\\,- \\ldots\\,) = - \\ldots$\n\n$$-${a} + (-${b}) = -${a} - ${b} = ${res}$$`;
+  }
+
   return {
-    question: `Calcule $(${a}) + (${b})$.`,
-    correction: `$(${a}) + (${b})$\n\n*${regle}*\n\n$$= ${r}$$`
+    question: `Calculer :\n\n$$${expr}$$`,
+    correction: corrText
   };
 };
 
