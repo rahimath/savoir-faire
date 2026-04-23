@@ -525,48 +525,249 @@ G[13] = () => {
 };
 
 G[14] = () => {
-  const a=rand(2,6), b=rand(1,5), c=rand(2,6), d=rand(2,4);
-  const variants = [
-    { e:`(${a} + (${b} + ${c})) \\times ${d}`, r:(a+b+c)*d,
-      s:`Parenthèses intérieures : $${b}+${c}=${b+c}$\n\nParenthèses extérieures : $${a}+${b+c}=${a+b+c}$\n\nMultiplication : $${a+b+c} \\times ${d} = ${(a+b+c)*d}$` },
-    { e:`((${a} + ${b}) \\times ${c}) + ${d}`, r:(a+b)*c+d,
-      s:`Parenthèses intérieures : $${a}+${b}=${a+b}$\n\nParenthèses extérieures : $${a+b} \\times ${c}=${(a+b)*c}$\n\nAddition finale : $${(a+b)*c}+${d}=${(a+b)*c+d}$` },
-  ];
-  const v = pick(variants);
+  const type = pick([1, 2, 3, 4, 5, 6, 7]);
+
+  // Génère un opérateur aléatoire
+  const op = () => pick(['+', '-']);
+
+  // Applique un opérateur
+  const apply = (a, o, b) => o === '+' ? a + b : a - b;
+
+  // Affiche val entre parenthèses si négatif
+  const sp = v => v < 0 ? `(${v})` : `${v}`;
+
+  function aligned(expr, steps) {
+    return `$$\\begin{aligned}\nA &= ${expr} \\\\[3pt]\n${steps.map(s => `&= ${s}`).join(' \\\\[3pt]\n')}\n\\end{aligned}$$`;
+  }
+
+  let a, b, c, d, o1, o2, o3;
+  let expr, steps, res;
+  let attempts = 0;
+
+  do {
+    attempts++;
+    a = rand(1, 14); b = rand(1, 14); c = rand(1, 14); d = rand(1, 14);
+    o1 = op(); o2 = op(); o3 = op();
+
+    if (type === 1) {
+      // a ± (b ± (c ± d))
+      const inner = apply(c, o3, d);       // c ± d
+      const mid   = apply(b, o2, inner);   // b ± inner
+      res         = apply(a, o1, mid);     // a ± mid
+      if (inner <= 0 || mid <= 0 || res <= 0 || res > 49) continue;
+
+      expr  = `${a} ${o1} (${b} ${o2} (${c} ${o3} ${d}))`;
+      steps = [
+        `${a} ${o1} (${b} ${o2} ${inner})`,
+        `${a} ${o1} ${sp(mid)}`,
+        `${res}`
+      ];
+
+    } else if (type === 2) {
+      // a ± ((b ± c) ± d)
+      const inner = apply(b, o2, c);       // b ± c
+      const mid   = apply(inner, o3, d);   // inner ± d
+      res         = apply(a, o1, mid);     // a ± mid
+      if (inner <= 0 || mid <= 0 || res <= 0 || res > 49) continue;
+
+      expr  = `${a} ${o1} ((${b} ${o2} ${c}) ${o3} ${d})`;
+      steps = [
+        `${a} ${o1} (${inner} ${o3} ${d})`,
+        `${a} ${o1} ${sp(mid)}`,
+        `${res}`
+      ];
+
+    } else if (type === 3) {
+      // (a ± (b ± c)) ± d
+      const inner = apply(b, o2, c);       // b ± c
+      const mid   = apply(a, o1, inner);   // a ± inner
+      res         = apply(mid, o3, d);     // mid ± d
+      if (inner <= 0 || mid <= 0 || res <= 0 || res > 49) continue;
+
+      expr  = `(${a} ${o1} (${b} ${o2} ${c})) ${o3} ${d}`;
+      steps = [
+        `(${a} ${o1} ${inner}) ${o3} ${d}`,
+        `${sp(mid)} ${o3} ${d}`,
+        `${res}`
+      ];
+
+    } else if (type === 4) {
+      // a × (b ± (c ± d))
+      const inner = apply(c, o3, d);       // c ± d
+      const mid   = apply(b, o2, inner);   // b ± inner
+      res         = a * mid;
+      if (inner <= 0 || mid <= 0 || res <= 0 || res > 49) continue;
+      a = rand(2, 6); // limiter a pour éviter résultats trop grands
+      const inner2 = apply(c, o3, d);
+      const mid2   = apply(b, o2, inner2);
+      res          = a * mid2;
+      if (inner2 <= 0 || mid2 <= 0 || res <= 0 || res > 49) continue;
+
+      expr  = `${a} \\times (${b} ${o2} (${c} ${o3} ${d}))`;
+      steps = [
+        `${a} \\times (${b} ${o2} ${inner2})`,
+        `${a} \\times ${sp(mid2)}`,
+        `${res}`
+      ];
+
+    } else if (type === 5) {
+      // a × ((b ± c) ± d)
+      a = rand(2, 6);
+      const inner = apply(b, o2, c);
+      const mid   = apply(inner, o3, d);
+      res         = a * mid;
+      if (inner <= 0 || mid <= 0 || res <= 0 || res > 49) continue;
+
+      expr  = `${a} \\times ((${b} ${o2} ${c}) ${o3} ${d})`;
+      steps = [
+        `${a} \\times (${inner} ${o3} ${d})`,
+        `${a} \\times ${sp(mid)}`,
+        `${res}`
+      ];
+
+    } else if (type === 6) {
+      // (a ± (b ± c)) × d
+      d = rand(2, 6);
+      const inner = apply(b, o2, c);
+      const mid   = apply(a, o1, inner);
+      res         = mid * d;
+      if (inner <= 0 || mid <= 0 || res <= 0 || res > 49) continue;
+
+      expr  = `(${a} ${o1} (${b} ${o2} ${c})) \\times ${d}`;
+      steps = [
+        `(${a} ${o1} ${inner}) \\times ${d}`,
+        `${sp(mid)} \\times ${d}`,
+        `${res}`
+      ];
+
+    } else {
+      // ((a ± b) ± c) × d
+      d = rand(2, 6);
+      const inner = apply(a, o1, b);
+      const mid   = apply(inner, o2, c);
+      res         = mid * d;
+      if (inner <= 0 || mid <= 0 || res <= 0 || res > 49) continue;
+
+      expr  = `((${a} ${o1} ${b}) ${o2} ${c}) \\times ${d}`;
+      steps = [
+        `(${inner} ${o2} ${c}) \\times ${d}`,
+        `${sp(mid)} \\times ${d}`,
+        `${res}`
+      ];
+    }
+
+    break;
+  } while (attempts < 500);
+
   return {
-    question: `Calcule $${v.e}$.`,
-    correction: `**Règle :** on commence par les parenthèses les plus intérieures.\n\n${v.s}\n\nRésultat : $${v.r}$`
+    question: `Calculer :\n\n$$A = ${expr}$$`,
+    correction: `On commence par les parenthèses les plus intérieures :\n\n${aligned(expr, steps)}`
   };
 };
 
 G[15] = () => {
-  const a=rand(2,9), b=rand(2,9), c=rand(2,8);
-  const ex = pick([
-    { expr:`${a} + ${b}`,               text:`la somme de $${a}$ et $${b}$` },
-    { expr:`${a+b} - ${b}`,             text:`la différence de $${a+b}$ et $${b}$` },
-    { expr:`${a} \\times ${b}`,         text:`le produit de $${a}$ et $${b}$` },
-    { expr:`${a*b} \\div ${b}`,         text:`le quotient de $${a*b}$ par $${b}$` },
-    { expr:`${a} + ${b} \\times ${c}`,  text:`la somme de $${a}$ et du produit de $${b}$ par $${c}$` },
-    { expr:`${a} \\times (${b} + ${c})`,text:`le produit de $${a}$ par la somme de $${b}$ et $${c}$` },
-  ]);
+  const a = rand(1, 14), b = rand(1, 14), c = rand(1, 14);
+  const type = pick([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]);
+
+  const items = {
+    1:  { phrase: `La somme de $${a}$ et $${b}$`,                                      calcul: `${a} + ${b}` },
+    2:  { phrase: `La différence de $${a}$ et $${b}$`,                                 calcul: `${a} - ${b}` },
+    3:  { phrase: `Le produit de $${a}$ par $${b}$`,                                   calcul: `${a} \\times ${b}` },
+    4:  { phrase: `Le quotient de $${a}$ par $${b}$`,                                  calcul: `${a} \\div ${b}` },
+    5:  { phrase: `La somme du produit de $${a}$ par $${b}$ et $${c}$`,               calcul: `${a} \\times ${b} + ${c}` },
+    6:  { phrase: `La somme de $${a}$ et du produit de $${b}$ par $${c}$`,            calcul: `${a} + ${b} \\times ${c}` },
+    7:  { phrase: `Le produit de la somme de $${a}$ et $${b}$ par $${c}$`,            calcul: `(${a} + ${b}) \\times ${c}` },
+    8:  { phrase: `Le produit de $${a}$ par la somme de $${b}$ et $${c}$`,            calcul: `${a} \\times (${b} + ${c})` },
+    9:  { phrase: `La différence du produit de $${a}$ par $${b}$ et $${c}$`,          calcul: `${a} \\times ${b} - ${c}` },
+    10: { phrase: `La différence de $${a}$ et du produit de $${b}$ par $${c}$`,       calcul: `${a} - ${b} \\times ${c}` },
+    11: { phrase: `Le produit de la différence de $${a}$ et $${b}$ par $${c}$`,       calcul: `(${a} - ${b}) \\times ${c}` },
+    12: { phrase: `Le produit de $${a}$ par la différence de $${b}$ et $${c}$`,       calcul: `${a} \\times (${b} - ${c})` },
+    13: { phrase: `La somme de $${a}$ et de la différence de $${b}$ et $${c}$`,       calcul: `${a} + ${b} - ${c}` },
+    14: { phrase: `La somme de la différence de $${a}$ et $${b}$ et $${c}$`,          calcul: `${a} - ${b} + ${c}` },
+    15: { phrase: `La différence de $${a}$ et la somme de $${b}$ et $${c}$`,          calcul: `${a} - (${b} + ${c})` },
+    16: { phrase: `La différence de la somme de $${a}$ et $${b}$ et $${c}$`,          calcul: `(${a} + ${b}) - ${c}` },
+  };
+
+  const { phrase, calcul } = items[type];
+
   return {
-    question: `Traduis en écriture mathématique : « ${ex.text} ».`,
-    correction: `« ${ex.text} » se note :\n\n$$${ex.expr}$$`
+    question: `Traduire la phrase suivante par un calcul :\n\n$$\\text{« ${phrase} »}$$`,
+    correction: `« ${phrase} » correspond à :\n\n$$${calcul}$$`
   };
 };
 
 G[16] = () => {
-  const a=rand(2,9), b=rand(2,9), c=rand(2,8);
-  const ex = pick([
-    { e:`${a} + ${b} \\times ${c}`, type:'une somme',      just:`La dernière opération effectuée est l'addition (la multiplication est prioritaire, mais elle n'est pas la dernière opération de la structure globale).` },
-    { e:`${a} \\times (${b} + ${c})`, type:'un produit',   just:`La dernière opération effectuée est la multiplication.` },
-    { e:`(${a} + ${b}) \\times ${c}`, type:'un produit',   just:`La dernière opération effectuée est la multiplication.` },
-    { e:`${a} - ${b} + ${c}`,         type:'une différence',just:`La première opération de gauche est une soustraction.` },
-    { e:`${a} \\times ${b} \\div ${c}`,type:'un produit',  just:`La dernière opération effectuée est la division (de même niveau que ×).` },
-  ]);
+  const a = rand(1,14), b = rand(1,14), c = rand(1,14), d = rand(1,14);
+  const op = () => pick(['+','-']);
+
+  // Pondération : 4/20 produits, 4/20 quotients, 6/20 sommes, 6/20 différences
+  // Pool : 4 produits + 4 quotients + 6 sommes + 6 différences = 20
+  const pool = [
+    ...Array(4).fill('produit'),
+    ...Array(4).fill('quotient'),
+    ...Array(6).fill('somme'),
+    ...Array(6).fill('différence'),
+  ];
+  const cat = pick(pool);
+
+  const o1 = op(), o2 = op();
+
+  let calcul, type_label;
+
+  if (cat === 'produit') {
+    const subtype = pick([1,2,3,3]); // type 3 un peu plus fréquent
+    if (subtype === 1) {
+      calcul = `(${a} ${o1} ${b}) \\times ${c}`;
+    } else if (subtype === 2) {
+      calcul = `${a} \\times (${b} ${o1} ${c})`;
+    } else {
+      calcul = `(${a} ${o1} ${b}) \\times (${c} ${o2} ${d})`;
+    }
+    type_label = { derniere: 'la multiplication', type: 'un produit' };
+
+  } else if (cat === 'quotient') {
+    const subtype = pick([1,2,3,3]);
+    if (subtype === 1) {
+      calcul = `(${a} ${o1} ${b}) \\div ${c}`;
+    } else if (subtype === 2) {
+      calcul = `${a} \\div (${b} ${o1} ${c})`;
+    } else {
+      calcul = `(${a} ${o1} ${b}) \\div (${c} ${o2} ${d})`;
+    }
+    type_label = { derniere: 'la division', type: 'un quotient' };
+
+  } else if (cat === 'somme') {
+    const subtype = pick([1,2,3,4,5,6,7,8,9,10]);
+    if (subtype === 1)       calcul = `${a} + ${b} \\times ${c}`;
+    else if (subtype === 2)  calcul = `${a} + ${b} \\div ${c}`;
+    else if (subtype === 3)  calcul = `${a} \\times ${b} + ${c}`;
+    else if (subtype === 4)  calcul = `${a} \\div ${b} + ${c}`;
+    else if (subtype === 5)  calcul = `(${a} - ${b}) + ${c}`;
+    else if (subtype === 6)  calcul = `${a} + ${b} \\times (${c} ${o1} ${d})`;
+    else if (subtype === 7)  calcul = `${a} + (${b} ${o1} ${c}) \\times ${d}`;
+    else if (subtype === 8)  calcul = `${a} \\times (${b} ${o1} ${c}) + ${d}`;
+    else if (subtype === 9)  calcul = `${a} \\times ${b} + ${c} \\times ${d}`;
+    else                     calcul = `${a} \\div ${b} + ${c} \\times ${d}`;
+    type_label = { derniere: 'l\'addition', type: 'une somme' };
+
+  } else {
+    const subtype = pick([1,2,3,4,5,6,7,8,9,10]);
+    if (subtype === 1)       calcul = `${a} - ${b} \\times ${c}`;
+    else if (subtype === 2)  calcul = `${a} - ${b} \\div ${c}`;
+    else if (subtype === 3)  calcul = `${a} \\times ${b} - ${c}`;
+    else if (subtype === 4)  calcul = `${a} \\div ${b} - ${c}`;
+    else if (subtype === 5)  calcul = `(${a} + ${b}) - ${c}`;
+    else if (subtype === 6)  calcul = `${a} - ${b} \\times (${c} ${o1} ${d})`;
+    else if (subtype === 7)  calcul = `${a} - (${b} ${o1} ${c}) \\times ${d}`;
+    else if (subtype === 8)  calcul = `${a} \\times (${b} ${o1} ${c}) - ${d}`;
+    else if (subtype === 9)  calcul = `${a} \\times ${b} - ${c} \\times ${d}`;
+    else                     calcul = `${a} \\div ${b} - ${c} \\times ${d}`;
+    type_label = { derniere: 'la soustraction', type: 'une différence' };
+  }
+
   return {
-    question: `Identifie le type de l'expression $${ex.e}$ : est-ce une somme, une différence, un produit ou un quotient ?`,
-    correction: `$${ex.e}$ est **${ex.type}**.\n\n${ex.just}`
+    question: `Le calcul suivant est-il une somme, une différence, un produit ou un quotient ?\n\n$$${calcul}$$`,
+    correction: `La dernière opération effectuée est ${type_label.derniere}.\n\nDonc, $${calcul}$ est ${type_label.type}.`
   };
 };
 
@@ -583,8 +784,10 @@ G[21] = () => {
 G[22] = () => {
   const vals = shuffle([-5,-4,-3,-2,-1,0,1,2,3,4,5]).slice(0,4);
   return {
-    question: `Sur une droite graduée (de $-6$ à $6$, unité 1 cm), place les nombres : $${vals.join('$, $')}$.`,
-    correction: `On place chaque nombre à sa position sur la droite :\n\n${vals.map(v=>`- $${v}$ : à ${v===0?'l\'origine':Math.abs(v)+' graduation'+(Math.abs(v)>1?'s':'')+' vers la '+(v>0?'droite':'gauche')}`).join('\n')}\n\n*Les négatifs sont à gauche de $0$, les positifs à droite.*`
+    // question: `Sur une droite graduée (de $-6$ à $6$, unité 1 cm), place les nombres : $${vals.join('$, $')}$.`,
+    // correction: `On place chaque nombre à sa position sur la droite :\n\n${vals.map(v=>`- $${v}$ : à ${v===0?'l\'origine':Math.abs(v)+' graduation'+(Math.abs(v)>1?'s':'')+' vers la '+(v>0?'droite':'gauche')}`).join('\n')}\n\n*Les négatifs sont à gauche de $0$, les positifs à droite.*`
+    question: `En cours de construction ...`,
+    correction: ``
   };
 };
 
@@ -651,16 +854,20 @@ G[31] = () => {
   const d=pick([2,3,4,5,6,8,10]), n=rand(1,d*2);
   const entier=Math.floor(n/d), reste=n%d;
   return {
-    question: `Sur une droite graduée dont l'unité est divisée en $${d}$ parts égales, place la fraction $${frac(n,d)}$.`,
-    correction: `$${frac(n,d)} = ${entier > 0 ? entier + ' + ' + frac(reste,d) + ' = ' : ''}${entier > 0 ? entier : ''}${reste>0? (entier>0?'+':'')+frac(reste,d):''}$\n\nOn divise chaque unité en $${d}$ parts. Le point se trouve à $${n}$ graduation${n>1?'s':''} depuis $0$${entier>0?' (soit après l\'entier $'+entier+'$)':''}.`
+    // question: `Sur une droite graduée dont l'unité est divisée en $${d}$ parts égales, place la fraction $${frac(n,d)}$.`,
+    // correction: `$${frac(n,d)} = ${entier > 0 ? entier + ' + ' + frac(reste,d) + ' = ' : ''}${entier > 0 ? entier : ''}${reste>0? (entier>0?'+':'')+frac(reste,d):''}$\n\nOn divise chaque unité en $${d}$ parts. Le point se trouve à $${n}$ graduation${n>1?'s':''} depuis $0$${entier>0?' (soit après l\'entier $'+entier+'$)':''}.`
+    question: `En cours de construction ...`,
+    correction: ``
   };
 };
 
 G[32] = () => {
   const d=pick([2,3,4,5,6,8]), n=rand(1,d*2-1);
   return {
-    question: `Sur une droite graduée divisée en $${d}$ parts par unité, un point $P$ est placé à la $${n}$${n===1?'re':'e'} graduation depuis $0$. Donne l'abscisse de $P$ sous forme de fraction.`,
-    correction: `Chaque graduation vaut $${frac(1,d)}$.\n\nLe point $P$ est à $${n}$ graduation${n>1?'s':''}, donc son abscisse est :\n\n$$${frac(n,d)}$$\n\n${pgcd(n,d)>1?'On peut simplifier : $'+simplFrac(n,d)+'$':''}`
+    // question: `Sur une droite graduée divisée en $${d}$ parts par unité, un point $P$ est placé à la $${n}$${n===1?'re':'e'} graduation depuis $0$. Donne l'abscisse de $P$ sous forme de fraction.`,
+    // correction: `Chaque graduation vaut $${frac(1,d)}$.\n\nLe point $P$ est à $${n}$ graduation${n>1?'s':''}, donc son abscisse est :\n\n$$${frac(n,d)}$$\n\n${pgcd(n,d)>1?'On peut simplifier : $'+simplFrac(n,d)+'$':''}`
+    question: `En cours de construction ...`,
+    correction: ``
   };
 };
 
@@ -792,54 +999,203 @@ G[35] = () => {
 
 // ── SÉQUENCE 4 : Triangles ────────────────────────────────────────────────────
 G[41] = () => {
-  const a=rand(3,9), b=rand(3,9), c=rand(Math.abs(a-b)+1, a+b-1);
+  const fmt = n => Number.isInteger(n) ? `${n}` : `${n.toFixed(1).replace('.', '{,}')}`;
+
+  let a, b, c;
+  do {
+    a = Math.round(rand(20, 99)) / 10;
+    b = Math.round(rand(20, 99)) / 10;
+    c = Math.round(rand(20, 99)) / 10;
+  } while (
+    a + b <= c || a + c <= b || b + c <= a
+  );
+
+  // Le segment de base est celui avec la plus grande longueur
+  // On identifie quel côté est le plus grand
+  const sides = [
+    { name: '[AB]', endpoints: ['A','B'], len: c },
+    { name: '[BC]', endpoints: ['B','C'], len: a },
+    { name: '[AC]', endpoints: ['A','C'], len: b },
+  ];
+  sides.sort((x, y) => y.len - x.len);
+  const base = sides[0]; // le plus grand côté
+  const others = sides.slice(1);
+
+  // Les deux autres côtés déterminent les arcs depuis chaque extrémité
+  // arc depuis endpoint[0] de base avec rayon = côté opposé à endpoint[1]
+  // On cherche pour chaque extrémité du segment de base quel rayon utiliser
+  const [P1, P2] = base.endpoints;
+
+  // Le rayon depuis P1 est la longueur du côté qui relie P1 au 3ème sommet
+  // Le rayon depuis P2 est la longueur du côté qui relie P2 au 3ème sommet
+  // 3ème sommet = le sommet qui n'est pas dans base.endpoints
+  const allPts = ['A','B','C'];
+  const thirdPt = allPts.find(p => !base.endpoints.includes(p));
+
+  // Trouver les longueurs des côtés reliant P1→thirdPt et P2→thirdPt
+  const getLen = (p1, p2) => {
+    if ((p1==='A'&&p2==='B')||(p1==='B'&&p2==='A')) return c;
+    if ((p1==='B'&&p2==='C')||(p1==='C'&&p2==='B')) return a;
+    return b;
+  };
+
+  const r1 = getLen(P1, thirdPt);
+  const r2 = getLen(P2, thirdPt);
+
   return {
-    question: `Décrire les étapes de construction du triangle $ABC$ tel que : $AB = ${a}\\,$cm, $BC = ${b}\\,$cm et $AC = ${c}\\,$cm`,
-    correction: `**Étapes de construction :**\n\n1. Tracer le segment $[AB]$ de longueur $${a}$ cm.\n2. Du point $A$, tracer un arc de cercle de rayon $${c}$ cm.\n3. Du point $B$, tracer un arc de cercle de rayon $${b}$ cm.\n4. Le point $C$ est l'intersection des deux arcs.\n5. Relier $A$, $B$ et $C$`
+    question: `Construire le triangle $ABC$ tel que :\n\n$AB = ${fmt(c)}\\,\\text{cm}$, $BC = ${fmt(a)}\\,\\text{cm}$ et $AC = ${fmt(b)}\\,\\text{cm}$`,
+    correction: `Étapes de construction :\n\n1. Tracer le segment $${base.name}$ de longueur $${fmt(base.len)}\\,\\text{cm}$.\n2. Du point $${P1}$, tracer un arc de cercle de rayon $${fmt(r1)}\\,\\text{cm}$.\n3. Du point $${P2}$, tracer un arc de cercle de rayon $${fmt(r2)}\\,\\text{cm}$.\n4. Le point $${thirdPt}$ est l'intersection des deux arcs de cercle.\n5. Relier les points $A$, $B$ et $C$`
   };
 };
 
 G[42] = () => {
-  const a=rand(4,9), b=rand(3,8), angle=pick([30,40,45,50,60,70]);
+  const fmt = n => Number.isInteger(n) ? `${n}` : `${n.toFixed(1).replace('.', '{,}')}`;
+
+  // Choisir deux côtés ayant un sommet en commun
+  const pairsCotes = [
+    { cotes: ['AB','AC'], commun: 'A', autres: ['B','C'] },
+    { cotes: ['AB','BC'], commun: 'B', autres: ['A','C'] },
+    { cotes: ['AC','BC'], commun: 'C', autres: ['A','B'] },
+  ];
+  const pair = pick(pairsCotes);
+  const [cote1, cote2] = pair.cotes;
+  const sommet = pair.commun;
+  const [autreP1, autreP2] = pair.autres;
+
+  // Longueurs
+  let l1, l2;
+  do {
+    l1 = Math.round(rand(20, 99)) / 10;
+    l2 = Math.round(rand(20, 99)) / 10;
+  } while (l1 + l2 > 16);
+
+  const angle = rand(20, 140);
+  const angleStr = `\\widehat{${autreP1}${sommet}${autreP2}}`;
+
+  // Le segment de base est le plus grand
+  const base      = l1 >= l2 ? cote1 : cote2;
+  const basePts   = base.split(''); // ex: ['A','B']
+  const baseLen   = l1 >= l2 ? l1 : l2;
+  const otherLen  = l1 >= l2 ? l2 : l1;
+  const otherPt   = l1 >= l2 ? autreP2 : autreP1; // le point à placer
+  const fromPt    = sommet; // on trace l'angle depuis le sommet commun
+
   return {
-    question: `Décrire les étapes de construction du triangle $ABC$ tel que : $AB = ${a}\\,$cm, $AC = ${b}\\,$cm et $\\widehat{BAC} = ${angle}°$`,
-    correction: `**Étapes de construction :**\n\n1. Tracer le segment $[AB]$ de longueur $${a}$ cm.\n2. En $A$, tracer un angle de $${angle}°$ à l'aide du rapporteur.\n3. Sur le côté de l'angle issu de $A$, placer $C$ à $${b}$ cm de $A$\n4. Relier $B$ et $C$`
+    question: `Construire le triangle $ABC$ tel que :\n\n$${cote1} = ${fmt(l1)}\\,\\text{cm}$, $${cote2} = ${fmt(l2)}\\,\\text{cm}$ et $${angleStr} = ${angle}°$`,
+    correction: `Étapes de construction :\n\n1. Tracer le segment $[${base}]$ de longueur $${fmt(baseLen)}\\,\\text{cm}$.\n2. En $${sommet}$, tracer l'angle $${angleStr}$ de $${angle}°$ à l'aide du rapporteur.\n3. Sur le côté de l'angle issu de $${sommet}$, placer $${otherPt}$ à $${fmt(otherLen)}\\,\\text{cm}$ de $${sommet}$\n4. Relier les points $${otherPt}$ et $${basePts.find(p => p !== sommet)}$`
   };
 };
 
 G[43] = () => {
-  const a1=pick([30,35,40,45,50,55,60]), a2=pick([30,35,40,45,50,55]);
-  const a3=180-a1-a2;
-  const c=rand(4,8);
+  const fmt = n => Number.isInteger(n) ? `${n}` : `${n.toFixed(1).replace('.', '{,}')}`;
+
+  // Choisir un côté
+  const cotesPossibles = [
+    { cote: 'AB', pts: ['A','B'], tiers: 'C' },
+    { cote: 'BC', pts: ['B','C'], tiers: 'A' },
+    { cote: 'AC', pts: ['A','C'], tiers: 'B' },
+  ];
+  const { cote, pts, tiers } = pick(cotesPossibles);
+  const [P1, P2] = pts;
+
+  // Longueur
+  const len = Math.round(rand(20, 99)) / 10;
+
+  // Deux angles dont la somme <= 160°
+  let a1, a2;
+  do {
+    a1 = rand(20, 140);
+    a2 = rand(20, 140);
+  } while (a1 + a2 > 160);
+
+  // Ordre aléatoire des angles dans l'énoncé
+  const swapped = pick([true, false]);
+  const [angleA, ptA, angleB, ptB] = swapped
+    ? [a2, P2, a1, P1]
+    : [a1, P1, a2, P2];
+
+  const angle3 = 180 - a1 - a2;
+  const angleStr1 = `\\widehat{${tiers}${ptA}${ptA === P1 ? P2 : P1}}`;
+  const angleStr2 = `\\widehat{${tiers}${ptB}${ptB === P1 ? P2 : P1}}`;
+
   return {
-    question: `Décrire les étapes de construction du triangle $ABC$ tel que : $AB = ${c}\\,$cm, $\\widehat{BAC} = ${a1}°$ et $\\widehat{ABC} = ${a2}°$`,
-    correction: `**Étapes de construction :**\n\n1. Tracer le segment $[AB]$ de longueur $${c}$ cm.\n2. En $A$, tracer un demi-droite faisant un angle de $${a1}°$ avec $[AB]$\n3. En $B$, tracer une demi-droite faisant un angle de $${a2}°$ avec $[AB]$\n4. Le point $C$ est l'intersection des deux demi-droites.`
+    question: `Construire le triangle $ABC$ tel que :\n\n$${cote} = ${fmt(len)}\\,\\text{cm}$, $${angleStr1} = ${angleA}°$ et $${angleStr2} = ${angleB}°$`,
+    correction: `**Étapes de construction :**\n\n1. Tracer le segment $[${cote}]$ de longueur $${fmt(len)}\\,\\text{cm}$.\n2. En $${ptA}$, tracer l'angle $${angleStr1}$ de $${angleA}°$ à l'aide du rapporteur.\n3. En $${ptB}$, tracer l'angle $${angleStr2}$ de $${angleB}°$ à l'aide du rapporteur.\n4. Le point $${tiers}$ est l'intersection des deux demi-droites tracées.`
   };
 };
 
 G[44] = () => {
-  const constructible = pick([true, false]);
+  const fmt = n => Number.isInteger(n * 10) && !Number.isInteger(n)
+    ? `${n.toFixed(1).replace('.', '{,}')}`
+    : Number.isInteger(n) ? `${n}` : `${Math.round(n*10)/10}`.replace('.', '{,}');
+
+  const isConstructible = Math.random() < 0.5;
+
   let a, b, c;
-  if (constructible) {
-    a=rand(3,8); b=rand(3,8); c=rand(Math.abs(a-b)+1,a+b-1);
-  } else {
-    a=rand(3,6); b=rand(3,6); c=a+b+rand(1,3);
+  do {
+    a = Math.round(rand(20, 99)) / 10;
+    b = Math.round(rand(20, 99)) / 10;
+    c = Math.round(rand(20, 99)) / 10;
+  } while (a + b <= c || a + c <= b || b + c <= a);
+
+  if (!isConstructible) {
+    let found = false;
+    let attempts = 0;
+    do {
+      attempts++;
+      a = Math.round(rand(20, 99)) / 10;
+      b = Math.round(rand(20, 99)) / 10;
+      c = Math.round(rand(20, 99)) / 10;
+      // Vérifier d'abord que c'est constructible
+      if (a + b <= c || a + c <= b || b + c <= a) continue;
+      // Prendre le plus grand et lui ajouter un excès
+      const vals = [a, b, c].sort((x, y) => x - y);
+      const s1 = vals[0], s2 = vals[1];
+      const excess = Math.round(rand(1, 3)) / 10;
+      const newBig = Math.round((s1 + s2 + excess) * 10) / 10;
+      // Vérifier que newBig <= 9.9
+      if (newBig > 9.9) continue;
+      const shuffled = shuffle([s1, s2, newBig]);
+      [a, b, c] = shuffled;
+      found = true;
+    } while (!found && attempts < 500);
   }
-  const ok = c<a+b && a<b+c && b<a+c;
+
+  // Identifier les trois côtés
+  const sides = [
+    { name: 'AB', len: c },
+    { name: 'BC', len: a },
+    { name: 'AC', len: b },
+  ];
+
+  // Trouver le plus grand côté et les deux plus petits
+  const sorted = [...sides].sort((x, y) => y.len - x.len);
+  const big  = sorted[0];
+  const sm1  = sorted[1];
+  const sm2  = sorted[2];
+
+  const sumSmall = Math.round((sm1.len + sm2.len) * 10) / 10;
+  const symbol = sumSmall > big.len ? '>' : '\\leq';
+  const ok = sumSmall > big.len;
+
   return {
-    question: `Un triangle a pour côtés $${a}$ cm, $${b}$ cm et $${c}$ cm. Ce triangle est-il constructible ? Justifie par l'inégalité triangulaire.`,
-    correction: `**Inégalité triangulaire :** un triangle est constructible si et seulement si chaque côté est strictement inférieur à la somme des deux autres.\n\n- $${a} + ${b} = ${a+b}$ ${a+b>c?'>':'≤'} $${c}$ ${a+b>c?'✓':'✗'}\n- $${a} + ${c} = ${a+c}$ ${a+c>b?'>':'≤'} $${b}$ ${a+c>b?'✓':'✗'}\n- $${b} + ${c} = ${b+c}$ ${b+c>a?'>':'≤'} $${a}$ ${b+c>a?'✓':'✗'}\n\n**Conclusion :** ce triangle est **${ok?'constructible':'non constructible'}**.`
+    question: `Le triangle $ABC$ tel que $AB = ${fmt(c)}\\,\\text{cm}$, $BC = ${fmt(a)}\\,\\text{cm}$ et $AC = ${fmt(b)}\\,\\text{cm}$ est-il constructible ?`,
+    correction: `Inégalité triangulaire : un triangle est constructible si et seulement si chaque côté est strictement inférieur à la somme des deux autres.\n\nOn vérifie que la somme des longueurs des deux plus petits côtés est supérieure à la longueur du plus grand côté :\n\n$$${fmt(sm1.len)} + ${fmt(sm2.len)} = ${fmt(sumSmall)} ${symbol} ${fmt(big.len)}$$\n\nDonc, le triangle $ABC$ ${ok ? 'est' : "n'est pas"} constructible.`
   };
 };
 
 G[45] = () => ({
-  question: `Dans un triangle $ABC$, explique comment tracer la médiatrice du côté $[AB]$. Que peut-on dire du point d'intersection des trois médiatrices ?`,
-  correction: `**Tracer la médiatrice de $[AB]$ :**\n\n1. Avec le compas, tracer un arc de cercle depuis $A$ (rayon > moitié de $AB$).\n2. Avec le même rayon, tracer un arc de cercle depuis $B$.\n3. Les deux arcs se coupent en deux points $P$ et $Q$.\n4. La droite $(PQ)$ est la médiatrice de $[AB]$.\n\n**Propriété :** Les trois médiatrices d'un triangle se coupent en un seul point : le **centre du cercle circonscrit** (cercle passant par les trois sommets).`
+  // question: `Dans un triangle $ABC$, explique comment tracer la médiatrice du côté $[AB]$. Que peut-on dire du point d'intersection des trois médiatrices ?`,
+  // correction: `**Tracer la médiatrice de $[AB]$ :**\n\n1. Avec le compas, tracer un arc de cercle depuis $A$ (rayon > moitié de $AB$).\n2. Avec le même rayon, tracer un arc de cercle depuis $B$.\n3. Les deux arcs se coupent en deux points $P$ et $Q$.\n4. La droite $(PQ)$ est la médiatrice de $[AB]$.\n\n**Propriété :** Les trois médiatrices d'un triangle se coupent en un seul point : le **centre du cercle circonscrit** (cercle passant par les trois sommets).`
+  question: `En cours de construction ...`,
+  correction: ``
 });
 
 G[46] = () => ({
-  question: `Dans un triangle $ABC$, explique comment tracer la hauteur issue du sommet $A$.`,
-  correction: `**Tracer la hauteur issue de $A$ :**\n\nLa hauteur issue de $A$ est la droite perpendiculaire à $[BC]$ passant par $A$.\n\n1. Depuis $A$, tracer deux arcs de cercle (même rayon) qui coupent la droite $(BC)$ en deux points $P$ et $Q$.\n2. Depuis $P$ et $Q$, tracer des arcs de cercle de même rayon.\n3. La droite passant par $A$ et l'intersection de ces arcs est perpendiculaire à $(BC)$.\n\n**Propriété :** Les trois hauteurs se coupent en un point : l'**orthocentre** du triangle.`
+  // question: `Dans un triangle $ABC$, explique comment tracer la hauteur issue du sommet $A$.`,
+  // correction: `**Tracer la hauteur issue de $A$ :**\n\nLa hauteur issue de $A$ est la droite perpendiculaire à $[BC]$ passant par $A$.\n\n1. Depuis $A$, tracer deux arcs de cercle (même rayon) qui coupent la droite $(BC)$ en deux points $P$ et $Q$.\n2. Depuis $P$ et $Q$, tracer des arcs de cercle de même rayon.\n3. La droite passant par $A$ et l'intersection de ces arcs est perpendiculaire à $(BC)$.\n\n**Propriété :** Les trois hauteurs se coupent en un point : l'**orthocentre** du triangle.`
+  question: `En cours de construction ...`,
+  correction: ``
 });
 
 G[47] = () => {
@@ -1952,7 +2308,7 @@ G[92] = () => {
 
     return {
       question:`Voici un programme de calcul :\n\n- Choisir un nombre\n${stepDescs}\n\nÉcrire l'expression littérale obtenue si on choisit $x$ comme nombre de départ.`,
-      correction:`On applique chaque étape depuis $x$ :\n\n- Départ : $x$\n${detailLines}\n\nL'expression est : $$${exprFinal}$$`
+      correction:`On applique chaque étape depuis $x$ :\n\n- Départ : $x$\n${detailLines}\n\nDonc, l'expression est : $$${exprFinal}$$`
     };
   }
 
@@ -2739,10 +3095,12 @@ G[101] = () => {
       symX = 2 * val - x; symY = y;
     }
     return {
-      question: `Donner les coordonnées du symétrique du point $A(${x}\\,;\\,${y})$ par rapport à la droite d'équation $${axeStr}$.`,
-      correction: `La droite $${axeStr}$ est ${axeType === 'horizontale' ? 'horizontale' : 'verticale'}.\n\nPour trouver le symétrique de $A$ par rapport à cette droite :\n\n- On calcule la distance de $A$ à la droite\n- On reporte cette distance de l'autre côté\n\n${axeType === 'horizontale'
-        ? `La distance de $A$ à la droite est $|${y} - (${val})| = ${Math.abs(y - val)}$.\n\nLe symétrique a la même abscisse et une ordonnée à $${Math.abs(y - val)}$ de l'autre côté : $${symY}$.`
-        : `La distance de $A$ à la droite est $|${x} - (${val})| = ${Math.abs(x - val)}$.\n\nLe symétrique a la même ordonnée et une abscisse à $${Math.abs(x - val)}$ de l'autre côté : $${symX}$.`}\n\nLe symétrique de $A$ est $A'(${symX}\\,;\\,${symY})$.`
+      // question: `Donner les coordonnées du symétrique du point $A(${x}\\,;\\,${y})$ par rapport à la droite d'équation $${axeStr}$.`,
+      // correction: `La droite $${axeStr}$ est ${axeType === 'horizontale' ? 'horizontale' : 'verticale'}.\n\nPour trouver le symétrique de $A$ par rapport à cette droite :\n\n- On calcule la distance de $A$ à la droite\n- On reporte cette distance de l'autre côté\n\n${axeType === 'horizontale'
+        // ? `La distance de $A$ à la droite est $|${y} - (${val})| = ${Math.abs(y - val)}$.\n\nLe symétrique a la même abscisse et une ordonnée à $${Math.abs(y - val)}$ de l'autre côté : $${symY}$.`
+        // : `La distance de $A$ à la droite est $|${x} - (${val})| = ${Math.abs(x - val)}$.\n\nLe symétrique a la même ordonnée et une abscisse à $${Math.abs(x - val)}$ de l'autre côté : $${symX}$.`}\n\nLe symétrique de $A$ est $A'(${symX}\\,;\\,${symY})$.`
+      question: `En cours de construction ...`,
+      correction: ``
     };
   }
 
@@ -2761,8 +3119,10 @@ G[101] = () => {
       sA = `(${2*val-x1}\\,;\\,${y1})`; sB = `(${2*val-x2}\\,;\\,${y2})`;
     }
     return {
-      question: `Décrire comment construire le symétrique du segment $[AB]$ avec $A(${x1}\\,;\\,${y1})$ et $B(${x2}\\,;\\,${y2})$ par rapport à la droite $${axeStr}$.`,
-      correction: `Pour construire le symétrique d'un segment par symétrie axiale :\n\n1. On construit le symétrique $A'$ de $A$ par rapport à la droite $${axeStr}$ : $A'${sA}$\n2. On construit le symétrique $B'$ de $B$ par rapport à la droite $${axeStr}$ : $B'${sB}$\n3. Le symétrique du segment $[AB]$ est le segment $[A'B']$\n\n*Rappel : pour chaque point, on trace la perpendiculaire à l'axe passant par ce point, puis on reporte la même distance de l'autre côté.*`
+      // question: `Décrire comment construire le symétrique du segment $[AB]$ avec $A(${x1}\\,;\\,${y1})$ et $B(${x2}\\,;\\,${y2})$ par rapport à la droite $${axeStr}$.`,
+      // correction: `Pour construire le symétrique d'un segment par symétrie axiale :\n\n1. On construit le symétrique $A'$ de $A$ par rapport à la droite $${axeStr}$ : $A'${sA}$\n2. On construit le symétrique $B'$ de $B$ par rapport à la droite $${axeStr}$ : $B'${sB}$\n3. Le symétrique du segment $[AB]$ est le segment $[A'B']$\n\n*Rappel : pour chaque point, on trace la perpendiculaire à l'axe passant par ce point, puis on reporte la même distance de l'autre côté.*`
+      question: `En cours de construction ...`,
+      correction: ``
     };
   }
 
@@ -2780,8 +3140,10 @@ G[101] = () => {
     syms = coords.map(([x, y]) => `(${2*val-x}\\,;\\,${y})`);
   }
   return {
-    question: `Décrire comment construire le symétrique du triangle $ABC$ avec $A(${coords[0].join('\\,;\\,')})$, $B(${coords[1].join('\\,;\\,')})$ et $C(${coords[2].join('\\,;\\,')})$ par rapport à la droite $${axeStr}$.`,
-    correction: `Pour construire le symétrique d'un triangle par symétrie axiale :\n\n1. On construit le symétrique de chaque sommet par rapport à la droite $${axeStr}$ :\n   - $A' ${syms[0]}$\n   - $B' ${syms[1]}$\n   - $C' ${syms[2]}$\n2. On relie $A'$, $B'$ et $C'$ pour obtenir le triangle $A'B'C'$\n\n*Le triangle $A'B'C'$ est le symétrique du triangle $ABC$.*`
+    // question: `Décrire comment construire le symétrique du triangle $ABC$ avec $A(${coords[0].join('\\,;\\,')})$, $B(${coords[1].join('\\,;\\,')})$ et $C(${coords[2].join('\\,;\\,')})$ par rapport à la droite $${axeStr}$.`,
+    // correction: `Pour construire le symétrique d'un triangle par symétrie axiale :\n\n1. On construit le symétrique de chaque sommet par rapport à la droite $${axeStr}$ :\n   - $A' ${syms[0]}$\n   - $B' ${syms[1]}$\n   - $C' ${syms[2]}$\n2. On relie $A'$, $B'$ et $C'$ pour obtenir le triangle $A'B'C'$\n\n*Le triangle $A'B'C'$ est le symétrique du triangle $ABC$.*`
+    question: `En cours de construction ...`,
+    correction: ``
   };
 };
 
@@ -2794,8 +3156,10 @@ G[102] = () => {
     const cx = rand(-3, 3), cy = rand(-3, 3);
     const symX = 2*cx - x, symY = 2*cy - y;
     return {
-      question: `Donner les coordonnées du symétrique du point $A(${x}\\,;\\,${y})$ par rapport au point $O(${cx}\\,;\\,${cy})$.`,
-      correction: `Pour trouver le symétrique de $A$ par rapport au centre $O$, le centre de symétrie $O$ doit être le milieu de $[AA']$.\n\nDonc :\n$$x_{A'} = 2 \\times ${cx} - (${x}) = ${2*cx} - (${x}) = ${symX}$$\n$$y_{A'} = 2 \\times ${cy} - (${y}) = ${2*cy} - (${y}) = ${symY}$$\n\nLe symétrique de $A$ par rapport à $O$ est $A'(${symX}\\,;\\,${symY})$.`
+      // question: `Donner les coordonnées du symétrique du point $A(${x}\\,;\\,${y})$ par rapport au point $O(${cx}\\,;\\,${cy})$.`,
+      // correction: `Pour trouver le symétrique de $A$ par rapport au centre $O$, le centre de symétrie $O$ doit être le milieu de $[AA']$.\n\nDonc :\n$$x_{A'} = 2 \\times ${cx} - (${x}) = ${2*cx} - (${x}) = ${symX}$$\n$$y_{A'} = 2 \\times ${cy} - (${y}) = ${2*cy} - (${y}) = ${symY}$$\n\nLe symétrique de $A$ par rapport à $O$ est $A'(${symX}\\,;\\,${symY})$.`
+      question: `En cours de construction ...`,
+      correction: ``
     };
   }
 
@@ -2806,8 +3170,10 @@ G[102] = () => {
     const sAx=2*cx-x1, sAy=2*cy-y1, sBx=2*cx-x2, sBy=2*cy-y2;
     const cStr = cx===0&&cy===0 ? `l'origine` : `$O(${cx}\\,;\\,${cy})$`;
     return {
-      question: `Décrire comment construire le symétrique du segment $[AB]$ avec $A(${x1}\\,;\\,${y1})$ et $B(${x2}\\,;\\,${y2})$ par rapport au point $O(${cx}\\,;\\,${cy})$.`,
-      correction: `Pour construire le symétrique d'un segment par symétrie centrale de centre ${cStr} :\n\n1. On construit le symétrique $A'$ de $A$ : $A'(${sAx}\\,;\\,${sAy})$\n2. On construit le symétrique $B'$ de $B$ : $B'(${sBx}\\,;\\,${sBy})$\n3. Le symétrique du segment $[AB]$ est le segment $[A'B']$\n\n*Rappel : $O$ est le milieu de $[AA']$ et de $[BB']$.*`
+      // question: `Décrire comment construire le symétrique du segment $[AB]$ avec $A(${x1}\\,;\\,${y1})$ et $B(${x2}\\,;\\,${y2})$ par rapport au point $O(${cx}\\,;\\,${cy})$.`,
+      // correction: `Pour construire le symétrique d'un segment par symétrie centrale de centre ${cStr} :\n\n1. On construit le symétrique $A'$ de $A$ : $A'(${sAx}\\,;\\,${sAy})$\n2. On construit le symétrique $B'$ de $B$ : $B'(${sBx}\\,;\\,${sBy})$\n3. Le symétrique du segment $[AB]$ est le segment $[A'B']$\n\n*Rappel : $O$ est le milieu de $[AA']$ et de $[BB']$.*`
+      question: `En cours de construction ...`,
+      correction: ``
     };
   }
 
@@ -2818,8 +3184,10 @@ G[102] = () => {
   const syms = coords.map(([x,y])=>`(${2*cx-x}\\,;\\,${2*cy-y})`);
   const cStr = cx===0&&cy===0 ? `l'origine $O$` : `le point $O(${cx}\\,;\\,${cy})$`;
   return {
-    question: `Décrire comment construire le symétrique du triangle $ABC$ avec $A(${coords[0].join('\\,;\\,')})$, $B(${coords[1].join('\\,;\\,')})$ et $C(${coords[2].join('\\,;\\,')})$ par rapport à ${cStr}.`,
-    correction: `Pour construire le symétrique d'un triangle par symétrie centrale :\n\n1. On construit le symétrique de chaque sommet :\n   - $A'${syms[0]}$\n   - $B'${syms[1]}$\n   - $C'${syms[2]}$\n2. On relie $A'$, $B'$ et $C'$ pour obtenir le triangle $A'B'C'$\n\n*Le centre de symétrie $O$ est le milieu de chaque segment $[AA']$, $[BB']$ et $[CC']$.*`
+    // question: `Décrire comment construire le symétrique du triangle $ABC$ avec $A(${coords[0].join('\\,;\\,')})$, $B(${coords[1].join('\\,;\\,')})$ et $C(${coords[2].join('\\,;\\,')})$ par rapport à ${cStr}.`,
+    // correction: `Pour construire le symétrique d'un triangle par symétrie centrale :\n\n1. On construit le symétrique de chaque sommet :\n   - $A'${syms[0]}$\n   - $B'${syms[1]}$\n   - $C'${syms[2]}$\n2. On relie $A'$, $B'$ et $C'$ pour obtenir le triangle $A'B'C'$\n\n*Le centre de symétrie $O$ est le milieu de chaque segment $[AA']$, $[BB']$ et $[CC']$.*`
+    question: `En cours de construction ...`,
+    correction: ``
   };
 };
 
@@ -2885,8 +3253,10 @@ G[103] = () => {
   const axesStr = fig.axes === -1 ? 'une infinité' : fig.axes === 0 ? 'aucun' : fig.axes === 1 ? '1' : `${fig.axes}`;
 
   return {
-    question: `Combien d'axes de symétrie possède ${fig.nom} ? Décrire ces axes.`,
-    correction: `${fig.nom.charAt(0).toUpperCase() + fig.nom.slice(1)} possède **${axesStr} axe${fig.axes > 1 || fig.axes === -1 ? 's' : ''}** de symétrie.\n\n${fig.desc}`
+    // question: `Combien d'axes de symétrie possède ${fig.nom} ? Décrire ces axes.`,
+    // correction: `${fig.nom.charAt(0).toUpperCase() + fig.nom.slice(1)} possède **${axesStr} axe${fig.axes > 1 || fig.axes === -1 ? 's' : ''}** de symétrie.\n\n${fig.desc}`
+    question: `En cours de construction ...`,
+    correction: ``
   };
 };
 
@@ -2937,8 +3307,10 @@ G[104] = () => {
   const fig = pick(figures);
 
   return {
-    question: `${fig.nom.charAt(0).toUpperCase() + fig.nom.slice(1)} admet-il un centre de symétrie ? Si oui, le décrire.`,
-    correction: `${fig.nom.charAt(0).toUpperCase() + fig.nom.slice(1)} **${fig.centre ? 'admet' : 'n\'admet pas'}** de centre de symétrie.\n\n${fig.desc}`
+    // question: `${fig.nom.charAt(0).toUpperCase() + fig.nom.slice(1)} admet-il un centre de symétrie ? Si oui, le décrire.`,
+    // correction: `${fig.nom.charAt(0).toUpperCase() + fig.nom.slice(1)} **${fig.centre ? 'admet' : 'n\'admet pas'}** de centre de symétrie.\n\n${fig.desc}`
+    question: `En cours de construction ...`,
+    correction: ``
   };
 };
 
@@ -3112,7 +3484,7 @@ const CHAPTERS = [
   {num:1,title:"Règles de calcul",skills:[[11,"Effectuer un calcul sans parenthèses et sans priorité"],[12,"Effectuer un calcul sans parenthèses et avec priorité"],[13,"Effectuer un calcul avec parenthèses"],[14,"Effectuer un calcul avec parenthèses doubles"],[15,"Traduire un calcul avec le vocabulaire des opérations"],[16,"Identifier le type d'expression d'un calcul"]]},
   {num:2,title:"Nombres relatifs I",skills:[[21,"Déterminer l'opposé d'un nombre"],[22,"Placer un nombre relatif sur une droite graduée"],[23,"Comparer des nombres relatifs"],[24,"Lire les coordonnées d'un point dans un repère"],[25,"Placer un point dans un repère"]]},
   {num:3,title:"Fractions I",skills:[[31,"Placer une fraction sur une droite graduée"],[32,"Indiquer l'abscisse fractionnaire d'un point"],[33,"Calculer la fraction d'une quantité"],[34,"Trouver des fractions égales"],[35,"Simplifier une fraction"]]},
-  {num:4,title:"Triangles",skills:[[41,"Construire un triangle (3 longueurs)"],[42,"Construire un triangle (2 longueurs + 1 angle)"],[43,"Construire un triangle (1 longueur + 2 angles)"],[44,"Vérifier si un triangle est constructible"],[45,"Tracer les médiatrices d'un triangle"],[46,"Tracer les hauteurs d'un triangle"],[47,"Calculer un angle manquant"]]},
+  {num:4,title:"Triangles",skills:[[41,"Construire un triangle (3 longueurs)"],[42,"Construire un triangle (2 longueurs + 1 angle)"],[43,"Construire un triangle (1 longueur + 2 angles)"],[44,"Identifier si un triangle est constructible"],[45,"Tracer les médiatrices d'un triangle"],[46,"Tracer les hauteurs d'un triangle"],[47,"Calculer un angle manquant"]]},
   {num:5,title:"Fractions II",skills:[[51,"Mettre deux fractions au même dénominateur"],[52,"Comparer deux fractions (même dénominateur ou même numérateur)"],[53,"Comparer deux fractions (dénominateurs différents)"],[54,"Encadrer une fraction entre deux entiers consécutifs"],[55,"Additionner/soustraire deux fractions (même dénominateur)"],[56,"Additionner/soustraire deux fractions (dénominateurs différents)"]]},
   {num:6,title:"Arithmétique",skills:[[61,"Effectuer une division euclidienne"],[62,"Identifier si un nombre est multiple/diviseur d'un autre"],[63,"Déterminer la liste des diviseurs d'un nombre"],[64,"Déterminer la divisibilité d'un nombre avec les critères de divisibilité"],[65,"Reconnaître un nombre premier"],[66,"Décomposer un nombre en produit de facteurs premiers"],[67,"Simplifier une fraction avec la décomposition en facteurs premiers"]]},
   {num:7,title:"Proportionnalité I",skills:[[71,"Reconnaître une situation proportionnelle"],[72,"Déterminer un coefficient de proportionnalité"],[73,"Déterminer une valeur proportionnelle"],[74,"Déterminer un ratio"],[75,"Appliquer un ratio"]]},
