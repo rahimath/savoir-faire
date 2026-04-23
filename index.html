@@ -1199,12 +1199,50 @@ G[46] = () => ({
 });
 
 G[47] = () => {
-  let a=rand(30,80), b=rand(20,70);
-  if (a+b >= 180) b = 180-a-rand(10,30);
-  const c = 180-a-b;
+  const angles = [
+    { name: '\\widehat{ABC}', short: 'ABC' },
+    { name: '\\widehat{BCA}', short: 'BCA' },
+    { name: '\\widehat{CAB}', short: 'CAB' },
+  ];
+
+  // Choisir l'angle manquant
+  const missingIdx = pick([0, 1, 2]);
+  const missing = angles[missingIdx];
+  const known = angles.filter((_, i) => i !== missingIdx);
+
+  // Générer deux angles dont la somme est entre 40° et 160° (pour laisser 20° à 140° au 3ème)
+  let a1, a2, a3;
+  do {
+    a1 = rand(20, 140);
+    a2 = rand(20, 140);
+    a3 = 180 - a1 - a2;
+  } while (a3 < 20 || a3 > 140);
+
+  const measures = [a1, a2, a3];
+  const m1 = measures[angles.indexOf(known[0])];
+  const m2 = measures[angles.indexOf(known[1])];
+  const m3 = 180 - m1 - m2;
+
+  // Réassigner proprement
+  const val = [a1, a2, a3];
+  const knownVals = [val[angles.indexOf(known[0])], val[angles.indexOf(known[1])]];
+  // Plus simple : tirer directement
+  let v1, v2, v3;
+  do {
+    v1 = rand(20, 140);
+    v2 = rand(20, 140);
+    v3 = 180 - v1 - v2;
+  } while (v3 < 20 || v3 > 140);
+
+  const knownAngles = known;
+  const knownVals2 = [v1, v2];
+  const missingVal = v3;
+
+  const aligned = `$$\\begin{aligned}\n  ${missing.name} &= 180° - ${knownAngles[0].name} - ${knownAngles[1].name} \\\\[3pt]\n  &= 180° - ${v1}° - ${v2}° \\\\[3pt]\n  &= ${missingVal}°\n\\end{aligned}$$`;
+
   return {
-    question: `Dans un triangle $ABC$, $\\widehat{BAC} = ${a}°$ et $\\widehat{ABC} = ${b}°$. Calcule $\\widehat{BCA}$.`,
-    correction: `La somme des angles d'un triangle est $180°$.\n\n$$\\widehat{BCA} = 180° - \\widehat{BAC} - \\widehat{ABC} = 180° - ${a}° - ${b}° = ${c}°$$`
+    question: `Dans un triangle $ABC$, on a $${knownAngles[0].name} = ${v1}°$ et $${knownAngles[1].name} = ${v2}°$.\n\nQuelle est la mesure de l'angle $${missing.name}$ ?`,
+    correction: `La somme des mesures des angles d'un triangle est égale à $180°$. Ainsi :\n\n${aligned}\n\nDonc, l'angle $${missing.name}$ mesure $${missingVal}°$.`
   };
 };
 
@@ -3484,7 +3522,7 @@ const CHAPTERS = [
   {num:1,title:"Règles de calcul",skills:[[11,"Effectuer un calcul sans parenthèses et sans priorité"],[12,"Effectuer un calcul sans parenthèses et avec priorité"],[13,"Effectuer un calcul avec parenthèses"],[14,"Effectuer un calcul avec parenthèses doubles"],[15,"Traduire un calcul avec le vocabulaire des opérations"],[16,"Identifier le type d'expression d'un calcul"]]},
   {num:2,title:"Nombres relatifs I",skills:[[21,"Déterminer l'opposé d'un nombre"],[22,"Placer un nombre relatif sur une droite graduée"],[23,"Comparer des nombres relatifs"],[24,"Lire les coordonnées d'un point dans un repère"],[25,"Placer un point dans un repère"]]},
   {num:3,title:"Fractions I",skills:[[31,"Placer une fraction sur une droite graduée"],[32,"Indiquer l'abscisse fractionnaire d'un point"],[33,"Calculer la fraction d'une quantité"],[34,"Trouver des fractions égales"],[35,"Simplifier une fraction"]]},
-  {num:4,title:"Triangles",skills:[[41,"Construire un triangle (3 longueurs)"],[42,"Construire un triangle (2 longueurs + 1 angle)"],[43,"Construire un triangle (1 longueur + 2 angles)"],[44,"Identifier si un triangle est constructible"],[45,"Tracer les médiatrices d'un triangle"],[46,"Tracer les hauteurs d'un triangle"],[47,"Calculer un angle manquant"]]},
+  {num:4,title:"Triangles",skills:[[41,"Construire un triangle (3 longueurs)"],[42,"Construire un triangle (2 longueurs + 1 angle)"],[43,"Construire un triangle (1 longueur + 2 angles)"],[44,"Identifier si un triangle est constructible"],[45,"Tracer les médiatrices d'un triangle"],[46,"Tracer les hauteurs d'un triangle"],[47,"Calculer la mesure d'un angle manquant"]]},
   {num:5,title:"Fractions II",skills:[[51,"Mettre deux fractions au même dénominateur"],[52,"Comparer deux fractions (même dénominateur ou même numérateur)"],[53,"Comparer deux fractions (dénominateurs différents)"],[54,"Encadrer une fraction entre deux entiers consécutifs"],[55,"Additionner/soustraire deux fractions (même dénominateur)"],[56,"Additionner/soustraire deux fractions (dénominateurs différents)"]]},
   {num:6,title:"Arithmétique",skills:[[61,"Effectuer une division euclidienne"],[62,"Identifier si un nombre est multiple/diviseur d'un autre"],[63,"Déterminer la liste des diviseurs d'un nombre"],[64,"Déterminer la divisibilité d'un nombre avec les critères de divisibilité"],[65,"Reconnaître un nombre premier"],[66,"Décomposer un nombre en produit de facteurs premiers"],[67,"Simplifier une fraction avec la décomposition en facteurs premiers"]]},
   {num:7,title:"Proportionnalité I",skills:[[71,"Reconnaître une situation proportionnelle"],[72,"Déterminer un coefficient de proportionnalité"],[73,"Déterminer une valeur proportionnelle"],[74,"Déterminer un ratio"],[75,"Appliquer un ratio"]]},
