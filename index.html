@@ -1179,7 +1179,7 @@ G[44] = () => {
   const ok = sumSmall > big.len;
 
   return {
-    question: `Le triangle $ABC$ tel que $AB = ${fmt(c)}\\,\\text{cm}$, $BC = ${fmt(a)}\\,\\text{cm}$ et $AC = ${fmt(b)}\\,\\text{cm}$ est-il constructible ?`,
+    question: `Le triangle $ABC$ tel que $AB = ${fmt(c)}\\,\\text{cm}$, $BC = ${fmt(a)}\\,\\text{cm}$ et $AC = ${fmt(b)}\\,\\text{cm}$  \nest-il constructible ?`,
     correction: `Inégalité triangulaire : un triangle est constructible si et seulement si chaque côté est strictement inférieur à la somme des deux autres.\n\nOn vérifie que la somme des longueurs des deux plus petits côtés est supérieure à la longueur du plus grand côté :\n\n$$${fmt(sm1.len)} + ${fmt(sm2.len)} = ${fmt(sumSmall)} ${symbol} ${fmt(big.len)}$$\n\nDonc, le triangle $ABC$ ${ok ? 'est' : "n'est pas"} constructible.`
   };
 };
@@ -1199,34 +1199,40 @@ G[46] = () => ({
 });
 
 G[47] = () => {
-  const angles = [
-    { name: '\\widehat{ABC}', short: 'ABC' },
-    { name: '\\widehat{BCA}', short: 'BCA' },
-    { name: '\\widehat{CAB}', short: 'CAB' },
+  const allAngles = [
+    { name: '\\widehat{ABC}', vertex: 'B' },
+    { name: '\\widehat{BCA}', vertex: 'C' },
+    { name: '\\widehat{CAB}', vertex: 'A' },
   ];
 
-  // Choisir l'angle manquant
+  const isRectangle = Math.random() < 0.20;
+
+  if (isRectangle) {
+    const rightIdx = pick([0, 1, 2]);
+    const rightAngle = allAngles[rightIdx];
+    const others = allAngles.filter((_, i) => i !== rightIdx);
+
+    const knownIdx = pick([0, 1]);
+    const knownAngle = others[knownIdx];
+    const missingAngle = others[1 - knownIdx];
+
+    let v1;
+    do { v1 = rand(20, 69); } while (90 - v1 < 20);
+    const vMissing = 90 - v1;
+
+    const aligned = `$$\\begin{aligned}\n  ${missingAngle.name} &= 180° - ${rightAngle.name} - ${knownAngle.name} \\\\[3pt]\n  &= 180° - 90° - ${v1}° \\\\[3pt]\n  &= ${vMissing}°\n\\end{aligned}$$`;
+
+    return {
+      question: `Dans un triangle $ABC$ rectangle en $${rightAngle.vertex}$, on a $${knownAngle.name} = ${v1}°$.\n\nQuelle est la mesure de l'angle $${missingAngle.name}$ ?`,
+      correction: `La somme des mesures des angles d'un triangle est égale à $180°$. Le triangle $ABC$ étant rectangle en $${rightAngle.vertex}$, l'angle $${rightAngle.name}$ mesure $90°$. Ainsi :\n\n${aligned}\n\nDonc, l'angle $${missingAngle.name}$ mesure $${vMissing}°$.`
+    };
+  }
+
+  // Cas général : deux angles connus
   const missingIdx = pick([0, 1, 2]);
-  const missing = angles[missingIdx];
-  const known = angles.filter((_, i) => i !== missingIdx);
+  const missingAngle = allAngles[missingIdx];
+  const known = allAngles.filter((_, i) => i !== missingIdx);
 
-  // Générer deux angles dont la somme est entre 40° et 160° (pour laisser 20° à 140° au 3ème)
-  let a1, a2, a3;
-  do {
-    a1 = rand(20, 140);
-    a2 = rand(20, 140);
-    a3 = 180 - a1 - a2;
-  } while (a3 < 20 || a3 > 140);
-
-  const measures = [a1, a2, a3];
-  const m1 = measures[angles.indexOf(known[0])];
-  const m2 = measures[angles.indexOf(known[1])];
-  const m3 = 180 - m1 - m2;
-
-  // Réassigner proprement
-  const val = [a1, a2, a3];
-  const knownVals = [val[angles.indexOf(known[0])], val[angles.indexOf(known[1])]];
-  // Plus simple : tirer directement
   let v1, v2, v3;
   do {
     v1 = rand(20, 140);
@@ -1234,15 +1240,11 @@ G[47] = () => {
     v3 = 180 - v1 - v2;
   } while (v3 < 20 || v3 > 140);
 
-  const knownAngles = known;
-  const knownVals2 = [v1, v2];
-  const missingVal = v3;
-
-  const aligned = `$$\\begin{aligned}\n  ${missing.name} &= 180° - ${knownAngles[0].name} - ${knownAngles[1].name} \\\\[3pt]\n  &= 180° - ${v1}° - ${v2}° \\\\[3pt]\n  &= ${missingVal}°\n\\end{aligned}$$`;
+  const aligned = `$$\\begin{aligned}\n  ${missingAngle.name} &= 180° - ${known[0].name} - ${known[1].name} \\\\[3pt]\n  &= 180° - ${v1}° - ${v2}° \\\\[3pt]\n  &= ${v3}°\n\\end{aligned}$$`;
 
   return {
-    question: `Dans un triangle $ABC$, on a $${knownAngles[0].name} = ${v1}°$ et $${knownAngles[1].name} = ${v2}°$.\n\nQuelle est la mesure de l'angle $${missing.name}$ ?`,
-    correction: `La somme des mesures des angles d'un triangle est égale à $180°$. Ainsi :\n\n${aligned}\n\nDonc, l'angle $${missing.name}$ mesure $${missingVal}°$.`
+    question: `Dans un triangle $ABC$, on a $${known[0].name} = ${v1}°$ et $${known[1].name} = ${v2}°$.\n\nQuelle est la mesure de l'angle $${missingAngle.name}$ ?`,
+    correction: `La somme des mesures des angles d'un triangle est égale à $180°$. Ainsi :\n\n${aligned}\n\nDonc, l'angle $${missingAngle.name}$ mesure $${v3}°$.`
   };
 };
 
@@ -1962,23 +1964,137 @@ G[73] = () => {
 };
 
 G[74] = () => {
-  const total=rand(20,40), part=rand(5,total-5);
-  const g=pgcd(part,total);
-  return {
-    question: `Dans une classe de $${total}$ élèves, $${part}$ ont eu la moyenne. Quel est le ratio d'élèves ayant eu la moyenne ?`,
-    correction: `$$\\text{Ratio} = ${frac(part,total)}${g>1?' = '+simplFrac(part,total):''}$$\n\n*$${part}$ élèves sur $${total}$ ont eu la moyenne.*`
-  };
+  const type = pick([1, 2, 3]);
+
+  let a, b, label1, label2, question, fracLabel;
+
+  if (type === 1) {
+    do {
+      a = rand(5, 35);
+      b = rand(5, 35);
+    } while (pgcd(a, b) <= 2 || pgcd(a, b) > 20 || a + b < 15 || a + b > 60 || a / pgcd(a,b) > 19 || b / pgcd(a,b) > 19);
+    label1 = 'filles'; label2 = 'garçons';
+    question = `Une classe compte $${a}$ filles et $${b}$ garçons.  \nQuel est le ratio de filles et de garçons dans la classe ?`;
+    fracLabel = { top: '\\text{filles}', bot: '\\text{garçons}' };
+  }
+
+  else if (type === 2) {
+    do {
+      a = rand(10, 130);
+      b = rand(5, 100);
+    } while (pgcd(a, b) <= 2 || pgcd(a, b) > 20 || a <= b || a + b < 20 || a + b > 160 || a / pgcd(a,b) > 19 || b / pgcd(a,b) > 19);
+    label1 = 'voitures'; label2 = 'motos';
+    question = `Un parking contient $${a}$ voitures et $${b}$ motos.  \nQuel est le ratio de voitures et de motos dans le parking ?`;
+    fracLabel = { top: '\\text{voitures}', bot: '\\text{motos}' };
+  }
+
+  else {
+    do {
+      a = rand(10, 120);
+      b = rand(10, 120);
+    } while (pgcd(a, b) <= 2 || pgcd(a, b) > 20 || a + b < 20 || a + b > 160 || a / pgcd(a,b) > 19 || b / pgcd(a,b) > 19);
+    label1 = 'romans'; label2 = 'bandes dessinées';
+    question = `Une bibliothèque contient $${a}$ romans et $${b}$ bandes dessinées.  \nQuel est le ratio de romans et de bandes dessinées dans la bibliothèque ?`;
+    fracLabel = { top: '\\text{romans}', bot: '\\text{bandes dessinées}' };
+  }
+
+  const g = pgcd(a, b);
+  const sn = a / g, sd = b / g;
+
+  const correction =
+    `On simplifie la fraction $${frac(fracLabel.top, fracLabel.bot)}$ :\n\n` +
+    `$$${frac(a, b)} = ${frac(`${sn} \\times ${g}`, `${sd} \\times ${g}`)} = ${frac(sn, sd)}$$\n\n` +
+    `Donc, le ratio de ${label1} et de ${label2} est $${sn} : ${sd}$.`;
+
+  return { question, correction };
 };
 
 G[75] = () => {
-  const p=rand(1,4), tot=rand(3,7);
-  const total=tot*rand(2,5);
-  const item=pick(['filles','sportifs','lecteurs']);
-  const res=total/tot*p;
-  return {
-    question: `Dans un groupe de $${total}$ personnes, le ratio de $${item}$ est $${frac(p,tot)}$. Combien y a-t-il de $${item}$ ?`,
-    correction: `$$${total} \\times ${frac(p,tot)} = ${frac(total+'\\times'+p, tot)} = ${frac(total*p,tot)} = ${res}$$\n\nIl y a **$${res}$ ${item}** dans ce groupe.`
-  };
+  const r = Math.random();
+  const type = r < 0.15 ? 4 : pick([1, 2, 3]);
+
+  let a, b, c, n, total, part;
+
+  if (type === 4) {
+    do {
+      a = rand(1, 9); b = rand(1, 9); c = rand(1, 9);
+    } while (a === b && b === c);
+    total = a + b + c;
+    const multiples = [];
+    for (let k = 2; k * total <= 200; k++) multiples.push(k * total);
+    if (multiples.length === 0) return G[75]();
+    n = pick(multiples);
+    part = n / total;
+
+    // Ratio simplifié
+    const g3 = pgcd(pgcd(a, b), c);
+    const ra = a / g3, rb = b / g3, rc = c / g3;
+
+    const question = `Un groupe de $${n}$ élèves est réparti en trois groupes A, B et C, selon le ratio $${ra} : ${rb} : ${rc}$  \nCombien y a-t-il d'élèves dans chaque groupe ?`;
+    const correction =
+      `On additionne les valeurs du ratio pour avoir le nombre total de parts :\n\n` +
+      `$$${ra} + ${rb} + ${rc} = ${ra+rb+rc} \\text{ parts au total}$$\n\n` +
+      `Les $${n}$ élèves sont partagés en $${ra+rb+rc}$ parts égales : $${n} \\div ${ra+rb+rc} = ${n/(ra+rb+rc)}$\n\n` +
+      `Une part correspond ainsi à $${n/(ra+rb+rc)}$ élèves :\n\n` +
+      `- Groupe A : $${ra} \\times ${n/(ra+rb+rc)} = ${ra * n/(ra+rb+rc)}$\n` +
+      `- Groupe B : $${rb} \\times ${n/(ra+rb+rc)} = ${rb * n/(ra+rb+rc)}$\n` +
+      `- Groupe C : $${rc} \\times ${n/(ra+rb+rc)} = ${rc * n/(ra+rb+rc)}$\n\n` +
+      `Donc, il y a $${ra * n/(ra+rb+rc)}$ élèves dans le groupe A, $${rb * n/(ra+rb+rc)}$ élèves dans le groupe B et $${rc * n/(ra+rb+rc)}$ élèves dans le groupe C.`;
+    return { question, correction };
+  }
+
+  do {
+    a = rand(1, 9); b = rand(1, 9);
+  } while (a === b);
+  total = a + b;
+  const maxN = type === 3 ? 50 : 200;
+  const multiples = [];
+  for (let k = 2; k * total <= maxN; k++) multiples.push(k * total);
+  if (multiples.length === 0) return G[75]();
+  n = pick(multiples);
+  part = n / total;
+
+  // Ratio simplifié
+  const g2 = pgcd(a, b);
+  const ra = a / g2, rb = b / g2;
+
+  if (type === 1) {
+    const question = `On partage $${n}\\,$€ entre deux personnes selon le ratio $${ra} : ${rb}$  \nCombien chacun reçoit-il ?`;
+    const correction =
+      `On additionne les valeurs du ratio pour avoir le nombre total de parts :\n\n` +
+      `$$${ra} + ${rb} = ${ra+rb} \\text{ parts au total}$$\n\n` +
+      `Les $${n}\\,$€ sont partagés en $${ra+rb}$ parts égales : $${n} \\div ${ra+rb} = ${n/(ra+rb)}$\n\n` +
+      `Une part correspond ainsi à $${n/(ra+rb)}\\,$€ :\n\n` +
+      `- 1ère personne : $${ra} \\times ${n/(ra+rb)} = ${ra * n/(ra+rb)}\\,$€\n` +
+      `- 2ème personne : $${rb} \\times ${n/(ra+rb)} = ${rb * n/(ra+rb)}\\,$€\n\n` +
+      `Donc, la 1ère personne recevra $${ra * n/(ra+rb)}\\,$€ et la 2ème personne recevra $${rb * n/(ra+rb)}\\,$€.`;
+    return { question, correction };
+  }
+
+  if (type === 2) {
+    const question = `Un sac de $${n}$ billes contient des billes rouges et des billes bleues selon un ratio de $${ra} : ${rb}$  \nQuel est le nombre de billes rouges et de billes bleues dans le sac ?`;
+    const correction =
+      `On additionne les valeurs du ratio pour avoir le nombre total de parts :\n\n` +
+      `$$${ra} + ${rb} = ${ra+rb} \\text{ parts au total}$$\n\n` +
+      `Les $${n}$ billes sont partagées en $${ra+rb}$ parts égales : $${n} \\div ${ra+rb} = ${n/(ra+rb)}$\n\n` +
+      `Une part correspond ainsi à $${n/(ra+rb)}$ billes :\n\n` +
+      `- Billes rouges : $${ra} \\times ${n/(ra+rb)} = ${ra * n/(ra+rb)}$\n` +
+      `- Billes bleues : $${rb} \\times ${n/(ra+rb)} = ${rb * n/(ra+rb)}$\n\n` +
+      `Donc, il y a $${ra * n/(ra+rb)}$ billes rouges et $${rb * n/(ra+rb)}$ billes bleues dans le sac.`;
+    return { question, correction };
+  }
+
+  // type 3
+  const question = `Dans une classe de $${n}$ élèves, le ratio de filles et de garçons est de $${ra} : ${rb}$  \nCombien y a-t-il de filles et de garçons dans la classe ?`;
+  const correction =
+    `On additionne les valeurs du ratio pour avoir le nombre total de parts :\n\n` +
+    `$$${ra} + ${rb} = ${ra+rb} \\text{ parts au total}$$\n\n` +
+    `Les $${n}$ élèves sont partagés en $${ra+rb}$ parts égales : $${n} \\div ${ra+rb} = ${n/(ra+rb)}$\n\n` +
+    `Une part correspond ainsi à $${n/(ra+rb)}$ élèves :\n\n` +
+    `- Filles : $${ra} \\times ${n/(ra+rb)} = ${ra * n/(ra+rb)}$\n` +
+    `- Garçons : $${rb} \\times ${n/(ra+rb)} = ${rb * n/(ra+rb)}$\n\n` +
+    `Donc, il y a $${ra * n/(ra+rb)}$ filles et $${rb * n/(ra+rb)}$ garçons dans la classe.`;
+  return { question, correction };
 };
 
 // ── SÉQUENCE 8 : Nombres relatifs et calculs ──────────────────────────────────
@@ -2407,7 +2523,7 @@ G[92] = () => {
   ]);
   const item = pick(ctx.items);
   return {
-    question:`${ctx.desc}\n\nComment noter ${item.q} ?`,
+    question:`${ctx.desc}  \nComment noter ${item.q} ?`,
     correction:`${item.q} se note : $$${item.expr}$$`
   };
 };
@@ -3429,92 +3545,85 @@ G[112] = () => {
 };
 
 G[113] = () => {
-  const type = pick([1, 2, 3]);
+  let p, q, res;
+  let attempts = 0;
 
-  // Pourcentages "sympas"
-  const pourcentages = [5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 80];
+  do {
+    attempts++;
+    p = rand(1, 99);
+    q = Math.random() < 0.70 ? rand(1, 200) : rand(1, 999);
+    res = q * p / 100;
+  } while (!Number.isInteger(res) || attempts > 5000);
 
-  if (type === 1) {
-    // p% d'une quantité
-    const p = pick(pourcentages);
-    const total = pick([20, 40, 50, 60, 80, 100, 120, 150, 200, 250, 300, 400, 500]);
-    const res = total * p / 100;
-    if (!Number.isInteger(res)) return G[113]();
-    const ctx = pick([
-      { q: `Dans une classe de $${total}$ élèves, $${p}\\%$ ont eu la moyenne. Combien d'élèves ont eu la moyenne ?`, unit: 'élèves' },
-      { q: `Un article coûte $${total}$ €. Il bénéficie d'une réduction de $${p}\\%$. Calculer le montant de la réduction.`, unit: '€' },
-      { q: `Un stade contient $${total}$ places. $${p}\\%$ sont occupées. Combien de places sont occupées ?`, unit: 'places' },
-    ]);
-    const c = pick(ctx);
-    return {
-      question: `${c.q}`,
-      correction: `Pour calculer $${p}\\%$ de $${total}$ :\n\n$$${total} \\times ${frac(p, 100)} = ${frac(total * p, 100)} = ${res} \\text{ ${c.unit}}$$`
-    };
-  }
-
-  if (type === 2) {
-    // Augmentation/réduction en %
-    const p = pick(pourcentages);
-    const total = pick([50, 80, 100, 120, 150, 200, 250, 300, 400]);
-    const isAug = pick([true, false]);
-    const montant = total * p / 100;
-    if (!Number.isInteger(montant)) return G[113]();
-    const res = isAug ? total + montant : total - montant;
-    const coeff = isAug ? (100 + p) : (100 - p);
-
-    return {
-      question: `Un article coûte $${total}$ €. Son prix ${isAug ? 'augmente' : 'diminue'} de $${p}\\%$. Quel est le nouveau prix ?`,
-      correction: `**Méthode :** on calcule $${p}\\%$ de $${total}$ puis on ${isAug ? 'ajoute' : 'soustrait'}.\n\n$$${total} \\times ${frac(p, 100)} = ${montant} \\text{ €}$$\n\nNouveau prix :\n\n$$${total} ${isAug ? '+' : '-'} ${montant} = ${res} \\text{ €}$$`
-    };
-  }
-
-  // type 3 : coefficient multiplicateur
-  const p = pick(pourcentages);
-  const total = pick([50, 80, 100, 120, 150, 200, 250, 300]);
-  const isAug = pick([true, false]);
-  const coeff = isAug ? (100 + p) / 100 : (100 - p) / 100;
-  const res = total * coeff;
-  if (!Number.isInteger(res)) return G[113]();
+  const pDecStr = (p / 100).toFixed(2).replace('.', '{,}');
 
   return {
-    question: `Un article coûte $${total}$ €. Son prix ${isAug ? 'augmente' : 'diminue'} de $${p}\\%$. Quel est le nouveau prix en utilisant le coefficient multiplicateur ?`,
-    correction: `Une ${isAug ? 'augmentation' : 'diminution'} de $${p}\\%$ correspond à multiplier par $${frac(100 + (isAug ? p : -p), 100)} = ${coeff}$.\n\n$$${total} \\times ${coeff} = ${res} \\text{ €}$$`
+    question: `Calculer :\n\n$$${p}\\% \\text{ de } ${q}$$`,
+    correction:
+      `On multiplie la quantité par le pourcentage :\n\n` +
+      `$$${q} \\times ${frac(p, 100)} = ${q} \\times ${pDecStr} = ${res}$$`
   };
 };
 
 G[114] = () => {
-  const type = pick([1, 2]);
+  const type = pick([1, 2, 3]);
+
+  const isValid = (part, total) => Number.isInteger((part * 1000) / total);
+
+  let a, b, fracTop, fracBot, intro, conclusion;
 
   if (type === 1) {
-    // Calculer le pourcentage qu'une partie représente d'un tout
-    const total = pick([20, 25, 40, 50, 60, 80, 100, 120, 150, 200]);
-    const p = pick([5, 10, 15, 20, 25, 30, 40, 50, 60, 75]);
-    const part = total * p / 100;
-    if (!Number.isInteger(part)) return G[114]();
-
-    const ctx = pick([
-      { q: `Dans une classe de $${total}$ élèves, $${part}$ ont eu la moyenne. Quel pourcentage d'élèves a eu la moyenne ?` },
-      { q: `Sur $${total}$ élèves interrogés, $${part}$ préfèrent les maths. Quel pourcentage cela représente-t-il ?` },
-      { q: `Un sac contient $${total}$ billes dont $${part}$ sont rouges. Quel pourcentage de billes rouges y a-t-il ?` },
-    ]);
-
-    return {
-      question: pick(ctx).q,
-      correction: `On calcule le rapport $${frac('\\text{partie}', '\\text{total}')}$ puis on multiplie par $100$ :\n\n$$${frac(part, total)} \\times 100 = ${frac(part * 100, total)} = ${p} \\%$$`
-    };
+    let attempts = 0;
+    do { a = rand(15, 49); b = rand(1, a - 1); attempts++; }
+    while (!isValid(b, a) && attempts < 5000);
+    fracTop = '\\text{sportifs}'; fracBot = '\\text{total élèves}';
+    intro = `Le pourcentage correspond à $${frac(fracTop, fracBot)}$ :`;
+    conclusion = `Donc, le pourcentage d'élèves sportifs dans la classe est de $${((b/a)*100).toFixed(1).replace('.', '{,}')}\\%$.`;
+    return buildResult(a, b, intro, conclusion);
   }
 
-  // type 2 : trouver le pourcentage d'évolution
-  const initial = pick([50, 80, 100, 120, 150, 200]);
-  const p = pick([5, 10, 15, 20, 25, 30, 40, 50]);
-  const isAug = pick([true, false]);
-  const final = isAug ? initial + initial * p / 100 : initial - initial * p / 100;
-  if (!Number.isInteger(final)) return G[114]();
+  if (type === 2) {
+    let attempts = 0;
+    do { a = rand(200, 999); b = rand(1, a - 1); attempts++; }
+    while (!isValid(b, a) && attempts < 5000);
+    fracTop = '\\text{externes}'; fracBot = '\\text{total élèves}';
+    intro = `Le pourcentage correspond à $${frac(fracTop, fracBot)}$ :`;
+    conclusion = `Donc, le pourcentage d'élèves externes dans le collège est de $${((b/a)*100).toFixed(1).replace('.', '{,}')}\\%$.`;
+    return buildResult(a, b, intro, conclusion);
+  }
 
-  return {
-    question: `Un article coûtait $${initial}$ €. Son prix est maintenant de $${final}$ €. Calculer le pourcentage d'${isAug ? 'augmentation' : 'diminution'}.`,
-    correction: `On calcule la variation puis on divise par le prix initial :\n\n$$\\text{Variation} = ${final} - ${initial} = ${isAug ? '+' : ''}${final - initial} \\text{ €}$$\n\n$$\\text{Pourcentage} = ${frac(Math.abs(final - initial), initial)} \\times 100 = ${p} \\%$$\n\nLe prix a ${isAug ? 'augmenté' : 'diminué'} de $${p}\\%$.`
-  };
+  // type 3
+  let attempts = 0;
+  do { b = rand(50, 200); a = rand(Math.ceil(b / 2), b - 1); attempts++; }
+  while (!isValid(a, b) && attempts < 5000);
+  fracTop = '\\text{tirs réussis}'; fracBot = '\\text{tirs tentés}';
+  intro = `Le pourcentage correspond à $${frac(fracTop, fracBot)}$ :`;
+  conclusion = `Donc, son pourcentage de réussite cette saison est de $${((a/b)*100).toFixed(1).replace('.', '{,}')}\\%$.`;
+  return buildResult(b, a, intro, conclusion);
+
+  function buildResult(total, part, intro, conclusion) {
+    const ratio = part / total;
+    const pct = ratio * 100;
+    const pctStr = Number.isInteger(pct)
+      ? `${pct}`
+      : pct.toFixed(1).replace('.', '{,}');
+    const decStr = ratio.toFixed(3).replace('.', '{,}');
+
+    let question;
+    if (type === 1)
+      question = `Dans une classe de $${total}$ élèves, $${part}$ élèves font du sport.  \nQuel est le pourcentage d'élèves sportifs dans la classe ?`;
+    else if (type === 2)
+      question = `Dans un collège de $${total}$ élèves, $${part}$ élèves sont externes.  \nQuel est le pourcentage d'élèves externes dans le collège ?`;
+    else
+      question = `Cette saison, une joueuse de basket a mis $${part}$ lancers-francs sur $${total}$ tentés.  \nQuel est son pourcentage de réussite cette saison aux lancers-francs ?`;
+
+    const correction =
+      `${intro}\n\n` +
+      `$$${frac(part, total)} \\times 100 = ${decStr} \\times 100 = ${pctStr}$$\n\n` +
+      `${conclusion}`;
+
+    return { question, correction };
+  }
 };
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
