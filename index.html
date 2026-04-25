@@ -3473,13 +3473,15 @@ G[111] = () => {
 
   const fmtNum = (x, maxDec) => {
     if (Number.isInteger(x)) return `${x}`;
-    const s = x.toFixed(maxDec);
-    // Supprimer les zéros inutiles
-    const trimmed = parseFloat(s).toString();
+    const trimmed = parseFloat(x.toFixed(maxDec)).toString();
     return trimmed.replace('.', '{,}');
   };
 
   const RED = s => `<span style="color:#c0392b;font-weight:600;">${s}</span>`;
+  const fmtLatex = n => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\\,');
+  const fmtN = n => fmtLatex(n);
+
+  const hasAtMost1Dec = x => Number.isInteger(Math.round(x * 10));
 
   const genNForRange = (minN, maxN) => {
     const ranges = [
@@ -3502,31 +3504,30 @@ G[111] = () => {
     return candidates.length > 0 ? pick(candidates) : null;
   };
 
-  const fmtN = n => n >= 10000 ? n.toLocaleString('fr-FR') : `${n}`;
+  const makeTab = (rowLabel, col2top, col2bot, col3top, col3bot, knowTop) => {
+    const cell = s => `<td style="border:1.5px solid #b8b0a4; padding:6px 18px; text-align:center; font-family:'Lora',serif;">${s}</td>`;
+    const header = s => `<td style="border:1.5px solid #b8b0a4; padding:6px 18px; text-align:center; font-weight:600; background:#f0ece4;">${s}</td>`;
+    const topRight = knowTop ? `$${col3top}$` : RED(`$${col3top}$`);
+    const botRight = knowTop ? RED(`$${col3bot}$`) : `$${col3bot}$`;
+    return `<div style="margin:14px 0; overflow-x:auto;">
+<table style="border-collapse:collapse; margin:0 auto; font-size:1rem;">
+  <tr>${header(`${rowLabel} (cm)`)}${cell(`$${col2top}$`)}${cell(topRight)}</tr>
+  <tr>${header('Réalité (cm)')}${cell(`$${col2bot}$`)}${cell(botRight)}</tr>
+</table>
+</div>`;
+  };
 
-  // Vérifie qu'un nombre a au plus 1 décimale
-  const hasAtMost1Dec = x => Number.isInteger(Math.round(x * 10));
-
-  // ── CARTE : realCm entre 100000 et 100000000 ──
-  // d en km = realCm / 100000, doit avoir ≤ 1 décimale
-  // distance sur carte = realCm / n, doit avoir ≤ 1 décimale
   const genValidCarte = () => {
     for (let attempts = 0; attempts < 5000; attempts++) {
       const n = genNForRange(4000, 10000000);
       if (!n) continue;
-      // Choisir realCm entier dans [100000, 100000000]
-      // tel que realCm/n ≤ 1 déc et realCm/100000 ≤ 1 déc
-      // realCm/100000 ≤ 1 déc ↔ realCm % 10000 === 0
-      // realCm/n ≤ 1 déc ↔ (realCm*10) % n === 0
-      // Donc realCm doit être multiple de lcm(10000, n/pgcd(n,10))
       const g = pgcd(n, 10);
-      const stepN = n / g;           // pour que realCm*10 % n = 0
-      const stepKm = 10000;          // pour que realCm % 10000 = 0
-      const stepLcm = ppcm(stepN, stepKm);
+      const stepN = n / g;
+      const stepLcm = ppcm(stepN, 100000);
       const loK = Math.ceil(100000 / stepLcm);
-      const hiK = Math.floor(100000000 / stepLcm);
+      const hiK = Math.floor(100000000000 / stepLcm);
       if (loK > hiK) continue;
-      const k = rand(loK, hiK);
+      const k = rand(loK, Math.min(hiK, loK + 200));
       const realCm = k * stepLcm;
       const carteCm = realCm / n;
       if (!hasAtMost1Dec(carteCm)) continue;
@@ -3539,21 +3540,17 @@ G[111] = () => {
     return null;
   };
 
-  // ── PLAN : realCm entre 100 et 10000 ──
-  // d en m = realCm / 100, doit avoir ≤ 1 décimale
-  // distance sur plan = realCm / n, doit avoir ≤ 1 décimale
   const genValidPlan = () => {
     for (let attempts = 0; attempts < 5000; attempts++) {
       const n = genNForRange(4, 10000);
       if (!n) continue;
       const g = pgcd(n, 10);
       const stepN = n / g;
-      const stepM = 10;              // pour que realCm % 10 = 0 → dM ≤ 1 déc
-      const stepLcm = ppcm(stepN, stepM);
+      const stepLcm = ppcm(stepN, 10);
       const loK = Math.ceil(100 / stepLcm);
       const hiK = Math.floor(10000 / stepLcm);
       if (loK > hiK) continue;
-      const k = rand(loK, hiK);
+      const k = rand(loK, Math.min(hiK, loK + 200));
       const realCm = k * stepLcm;
       const planCm = realCm / n;
       if (!hasAtMost1Dec(planCm)) continue;
@@ -3566,26 +3563,13 @@ G[111] = () => {
     return null;
   };
 
-  const makeTab = (rowLabel, col2top, col2bot, col3top, col3bot, knowTop) => {
-    const cell = s => `<td style="border:1.5px solid #b8b0a4; padding:8px 18px; text-align:center; font-family:'Lora',serif;">${s}</td>`;
-    const header = s => `<td style="border:1.5px solid #b8b0a4; padding:8px 18px; text-align:center; font-weight:600; background:#f0ece4;">${s}</td>`;
-    const topRight = knowTop ? `$${col3top}$` : RED(`$${col3top}$`);
-    const botRight = knowTop ? RED(`$${col3bot}$`) : `$${col3bot}$`;
-    return `<div style="margin:14px 0; overflow-x:auto;">
-<table style="border-collapse:collapse; margin:0 auto; font-size:1rem;">
-  <tr>${header(`${rowLabel} (cm)`)}${cell(`$${col2top}$`)}${cell(topRight)}</tr>
-  <tr>${header('Réalité (cm)')}${cell(`$${col2bot}$`)}${cell(botRight)}</tr>
-</table>
-</div>`;
-  };
-
   // ── TYPE 1 : on donne carteCm → cherche réalité en km ──
   if (type === 1) {
     const res = genValidCarte();
     if (!res) return G[111]();
     const { n, realCm, carteCm, dKm } = res;
     const nFmt = fmtN(n);
-    const realCmFmt = realCm.toLocaleString('fr-FR');
+    const realCmFmt = fmtLatex(realCm);
     const carteCmStr = fmtNum(carteCm, 1);
     const dKmStr = fmtNum(dKm, 1);
     const tab = makeTab('Carte', '1', nFmt, carteCmStr, realCmFmt, true);
@@ -3595,7 +3579,7 @@ G[111] = () => {
         `L'échelle $\\dfrac{1}{${nFmt}}$ signifie que $1\\,\\text{cm}$ sur la carte $= ${nFmt}\\,\\text{cm}$ en réalité.\n\n` +
         `On peut traduire la situation avec un tableau de proportionnalité :\n\n` +
         tab +
-        `$$${carteCmStr} \\times ${nFmt} = ${realCmFmt}\\,\\text{cm}$$\n\n` +
+        `$$${carteCmStr} \\times ${nFmt} = ${realCmFmt}\\,\\text{cm} = ${dKmStr}\\,\\text{km}$$\n\n` +
         `Donc, la distance réelle entre ces deux villes est de $${dKmStr}\\,\\text{km}$.`
     };
   }
@@ -3606,7 +3590,7 @@ G[111] = () => {
     if (!res) return G[111]();
     const { n, realCm, carteCm, dKm } = res;
     const nFmt = fmtN(n);
-    const realCmFmt = realCm.toLocaleString('fr-FR');
+    const realCmFmt = fmtLatex(realCm);
     const carteCmStr = fmtNum(carteCm, 1);
     const dKmStr = fmtNum(dKm, 1);
     const tab = makeTab('Carte', '1', nFmt, carteCmStr, realCmFmt, false);
@@ -3628,16 +3612,17 @@ G[111] = () => {
     if (!res) return G[111]();
     const { n, realCm, planCm, dM } = res;
     const nFmt = fmtN(n);
+    const realCmFmt = fmtLatex(realCm);
     const planCmStr = fmtNum(planCm, 1);
     const dMStr = fmtNum(dM, 1);
-    const tab = makeTab('Plan', '1', nFmt, planCmStr, `${realCm}`, true);
+    const tab = makeTab('Plan', '1', nFmt, planCmStr, realCmFmt, true);
     return {
       question: `Sur un plan à l'échelle $\\dfrac{1}{${nFmt}}$, la distance entre deux points est de $${planCmStr}$ cm.\n\nQuelle est la distance réelle entre ces deux points ?`,
       correction:
         `L'échelle $\\dfrac{1}{${nFmt}}$ signifie que $1\\,\\text{cm}$ sur le plan $= ${nFmt}\\,\\text{cm}$ en réalité.\n\n` +
         `On peut traduire la situation avec un tableau de proportionnalité :\n\n` +
         tab +
-        `$$${planCmStr} \\times ${nFmt} = ${realCm}\\,\\text{cm}$$\n\n` +
+        `$$${planCmStr} \\times ${nFmt} = ${realCmFmt}\\,\\text{cm} = ${dMStr}\\,\\text{m}$$\n\n` +
         `Donc, la distance réelle entre ces deux points est de $${dMStr}\\,\\text{m}$.`
     };
   }
@@ -3647,49 +3632,183 @@ G[111] = () => {
   if (!res) return G[111]();
   const { n, realCm, planCm, dM } = res;
   const nFmt = fmtN(n);
+  const realCmFmt = fmtLatex(realCm);
   const planCmStr = fmtNum(planCm, 1);
   const dMStr = fmtNum(dM, 1);
-  const tab = makeTab('Plan', '1', nFmt, planCmStr, `${realCm}`, false);
+  const tab = makeTab('Plan', '1', nFmt, planCmStr, realCmFmt, false);
   return {
     question: `Deux points sont distants de $${dMStr}$ m.  \nQuelle est la distance entre eux sur un plan à l'échelle $\\dfrac{1}{${nFmt}}$ ?`,
     correction:
       `L'échelle $\\dfrac{1}{${nFmt}}$ signifie que $1\\,\\text{cm}$ sur le plan $= ${nFmt}\\,\\text{cm}$ en réalité.\n\n` +
-      `On convertit la distance réelle en cm : $${dMStr}\\,\\text{m} = ${realCm}\\,\\text{cm}$\n\n` +
+      `On convertit la distance réelle en cm : $${dMStr}\\,\\text{m} = ${realCmFmt}\\,\\text{cm}$\n\n` +
       `On peut traduire la situation avec un tableau de proportionnalité :\n\n` +
       tab +
-      `$$${realCm} \\div ${nFmt} = ${planCmStr}\\,\\text{cm}$$\n\n` +
+      `$$${realCmFmt} \\div ${nFmt} = ${planCmStr}\\,\\text{cm}$$\n\n` +
       `Donc, la distance sur le plan entre ces deux points est de $${planCmStr}\\,\\text{cm}$.`
   };
 };
 
 G[112] = () => {
-  const echelles = [
-    { den: 100,   str: '1/100' },
-    { den: 200,   str: '1/200' },
-    { den: 500,   str: '1/500' },
-    { den: 1000,  str: '1/1000' },
-    { den: 2000,  str: '1/2000' },
-    { den: 5000,  str: '1/5000' },
-    { den: 10000, str: '1/10000' },
-    { den: 25000, str: '1/25000' },
-    { den: 50000, str: '1/50000' },
-  ];
-  const ech = pick(echelles);
-  const planCm = pick([1, 2, 3, 4, 5, 6, 8, 10]);
-  const realCm = planCm * ech.den;
-  const realM = realCm / 100;
-  const realKm = realM / 1000;
+  const type = pick([1, 2]);
 
-  let realStr, realVal;
-  if (realM >= 1000) { realStr = `${realKm} km`; realVal = `${realKm} \\text{ km} = ${realM} \\text{ m} = ${realCm} \\text{ cm}`; }
-  else if (realM >= 1) { realStr = `${realM} m`; realVal = `${realM} \\text{ m} = ${realCm} \\text{ cm}`; }
-  else { realStr = `${realCm} cm`; realVal = `${realCm} \\text{ cm}`; }
+  const fmtNum = (x, maxDec) => {
+    if (Number.isInteger(x)) return `${x}`;
+    const trimmed = parseFloat(x.toFixed(maxDec)).toString();
+    return trimmed.replace('.', '{,}');
+  };
 
-  const objet = pick(['une route', 'un bâtiment', 'un terrain de foot', 'une rivière', 'un chemin']);
+  const RED = s => `<span style="color:#c0392b;font-weight:600;">${s}</span>`;
+
+  // Séparateur milliers LaTeX
+  const fmtLatex = n => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\\,');
+
+  const hasAtMost1Dec = x => Number.isInteger(Math.round(x * 10));
+
+  const genNCandidates = (minN, maxN) => {
+    const ranges = [
+      { min: 4,       max: 100,      step: 1      },
+      { min: 100,     max: 1000,     step: 10     },
+      { min: 1000,    max: 10000,    step: 100    },
+      { min: 4000,    max: 10000,    step: 100    },
+      { min: 10000,   max: 100000,   step: 1000   },
+      { min: 100000,  max: 1000000,  step: 10000  },
+      { min: 1000000, max: 10000000, step: 100000 },
+    ];
+    const candidates = [];
+    for (const r of ranges) {
+      const lo = Math.max(minN, r.min);
+      const hi = Math.min(maxN, r.max);
+      if (lo > hi) continue;
+      const s = Math.ceil(lo / r.step) * r.step;
+      for (let n = s; n <= hi; n += r.step) candidates.push(n);
+    }
+    return [...new Set(candidates)];
+  };
+
+  const makeTab = (rowLabel, col2top, col2bot, col3top, col3bot) => {
+    const cell = s => `<td style="border:1.5px solid #b8b0a4; padding:6px 18px; text-align:center; font-family:'Lora',serif;">${s}</td>`;
+    const header = s => `<td style="border:1.5px solid #b8b0a4; padding:6px 18px; text-align:center; font-weight:600; background:#f0ece4;">${s}</td>`;
+    return `<div style="margin:14px 0; overflow-x:auto;">
+<table style="border-collapse:collapse; margin:0 auto; font-size:1rem;">
+  <tr>${header(`${rowLabel} (cm)`)}${cell(`$${col2top}$`)}${cell(`$${col3top}$`)}</tr>
+  <tr>${header('Réalité (cm)')}${cell(`$${col2bot}$`)}${cell(RED(`$${col3bot}$`))}</tr>
+</table>
+</div>`;
+  };
+
+  // ── TYPE 1 : carte, d en km ──
+  if (type === 1) {
+    let n, d, m, realCm;
+    let attempts = 0;
+    const nCandidates = genNCandidates(4000, 100000000);
+    do {
+      attempts++;
+      n = pick(nCandidates);
+      const g = pgcd(n, 10);
+      const stepN = n / g;
+      const stepLcm = ppcm(stepN, 100000);
+      const loK = Math.ceil(100000 / stepLcm);
+      const hiK = Math.floor(100000000000 / stepLcm);
+      if (loK > hiK) continue;
+      const k = rand(loK, Math.min(hiK, loK + 200));
+      realCm = k * stepLcm;
+      m = realCm / n;
+      d = realCm / 100000;
+      if (m < 1 || m > 25) continue;
+      if (!hasAtMost1Dec(m)) continue;
+      if (d < 1 || d > 1000 || !Number.isInteger(d)) continue;
+    } while (attempts < 5000 && (m < 1 || m > 25 || d < 1 || d > 1000));
+
+    if (m < 1 || m > 25 || d < 1 || d > 1000) return G[112]();
+
+    const nFmt = fmtLatex(n);
+    const mStr = fmtNum(m, 1);
+    const realCmFmt = fmtLatex(realCm);
+
+    const tab = makeTab('Carte', mStr, realCmFmt, '1', nFmt);
+
+    return {
+      question: `Deux villes séparées de $${d}\\,\\text{km}$ sont distantes de $${mStr}\\,\\text{cm}$ sur une carte.  \nQuelle est l'échelle de la carte ?`,
+      correction:
+        `On convertit la distance réelle en cm : $${d}\\,\\text{km} = ${realCmFmt}\\,\\text{cm}$\n\n` +
+        `On peut traduire la situation avec un tableau de proportionnalité :\n\n` +
+        tab +
+        `$$${realCmFmt} \\div ${mStr} = ${nFmt}$$\n\n` +
+        `Donc, l'échelle de la carte est $\\dfrac{1}{${nFmt}}$`
+    };
+  }
+
+  // ── TYPE 2 : plan, d en m ──
+  // Situations adaptées à la valeur de d :
+  // d entre 1 et 5 : une pièce / salle de bains / couloir
+  // d entre 5 et 20 : une salle de classe / salle de sport
+  // d entre 20 et 100 : un terrain de basket / terrain de foot / piscine
+
+  let n, d, m, realCm;
+  let attempts = 0;
+  const nCandidates = genNCandidates(4, 10000);
+  do {
+    attempts++;
+    n = pick(nCandidates);
+    const g = pgcd(n, 10);
+    const stepN = n / g;
+    const stepLcm = ppcm(stepN, 100);
+    const loK = Math.ceil(100 / stepLcm);
+    const hiK = Math.floor(1000000 / stepLcm);
+    if (loK > hiK) continue;
+    const k = rand(loK, Math.min(hiK, loK + 200));
+    realCm = k * stepLcm;
+    m = realCm / n;
+    d = realCm / 100;
+    if (m < 1 || m > 25) continue;
+    if (!hasAtMost1Dec(m)) continue;
+    if (d < 1 || d > 100 || !Number.isInteger(d)) continue;
+  } while (attempts < 5000 && (m < 1 || m > 25 || d < 1 || d > 100));
+
+  if (m < 1 || m > 25 || d < 1 || d > 100) return G[112]();
+
+  const nFmt = fmtLatex(n);
+  const mStr = fmtNum(m, 1);
+  const realCmFmt = fmtLatex(realCm);
+
+  let objet;
+  if (d <= 5) {
+    objet = pick([
+      `Une salle de bains de $${d}\\,\\text{m}$ de long`,
+      `Un couloir de $${d}\\,\\text{m}$ de longueur`,
+      `Une pièce de $${d}\\,\\text{m}$ de large`,
+    ]);
+  } else if (d <= 20) {
+    objet = pick([
+      `Une salle de classe de $${d}\\,\\text{m}$ de long`,
+      `Une salle de sport de $${d}\\,\\text{m}$ de largeur`,
+      `Un gymnase de $${d}\\,\\text{m}$ de longueur`,
+    ]);
+  } else {
+    objet = pick([
+      `Un terrain de basket de $${d}\\,\\text{m}$ de long`,
+      `Une piscine municipale de $${d}\\,\\text{m}$ de longueur`,
+      `Un terrain de football de $${d}\\,\\text{m}$ de large`,
+    ]);
+  }
+
+  // Extraire le nom court pour la phrase de correction
+  const nomCourt = d <= 5
+    ? pick(['la salle de bains', 'le couloir', 'la pièce'])
+    : d <= 20
+      ? pick(['la salle de classe', 'la salle de sport', 'le gymnase'])
+      : pick(['le terrain de basket', 'la piscine', 'le terrain de football']);
+
+  const tab = makeTab('Plan', mStr, realCmFmt, '1', nFmt);
 
   return {
-    question: `Sur un plan, ${objet} mesure $${planCm}$ cm. En réalité, ${objet === 'une rivière' || objet === 'une route' || objet === 'un chemin' ? 'elle' : 'il'} mesure $${realStr}$. Déterminer l'échelle de ce plan.`,
-    correction: `On convertit la mesure réelle en centimètres : $${realVal}$\n\nL'échelle est le rapport :\n\n$$\\frac{\\text{mesure sur le plan}}{\\text{mesure réelle}} = ${frac(planCm, realCm)} = ${frac(1, ech.den)}$$\n\nL'échelle du plan est $${ech.str}$.`
+    question: `${objet} est représenté${d <= 5 && objet.includes('salle') || objet.includes('piscine') ? 'e' : ''} par un segment de $${mStr}\\,\\text{cm}$ sur un plan.  \nQuelle est l'échelle de ce plan ?`,
+    correction:
+      `On convertit la distance réelle en cm : $${d}\\,\\text{m} = ${realCmFmt}\\,\\text{cm}$\n\n` +
+      `On peut traduire la situation avec un tableau de proportionnalité :\n\n` +
+      tab +
+      `$$${realCmFmt} \\div ${mStr} = ${nFmt}$$\n\n` +
+      `Donc, l'échelle du plan est $\\dfrac{1}{${nFmt}}$`
   };
 };
 
