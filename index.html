@@ -3469,48 +3469,197 @@ G[104] = () => {
 };
 
 G[111] = () => {
-  const type = pick([1, 2]);
-  const echelles = [
-    { num: 1, den: 100,   str: '1/100',   label: '1 cm sur le plan = 1 m en réalité' },
-    { num: 1, den: 200,   str: '1/200',   label: '1 cm sur le plan = 2 m en réalité' },
-    { num: 1, den: 500,   str: '1/500',   label: '1 cm sur le plan = 5 m en réalité' },
-    { num: 1, den: 1000,  str: '1/1000',  label: '1 cm sur le plan = 10 m en réalité' },
-    { num: 1, den: 2000,  str: '1/2000',  label: '1 cm sur le plan = 20 m en réalité' },
-    { num: 1, den: 5000,  str: '1/5000',  label: '1 cm sur le plan = 50 m en réalité' },
-    { num: 1, den: 10000, str: '1/10000', label: '1 cm sur le plan = 100 m en réalité' },
-    { num: 1, den: 25000, str: '1/25000', label: '1 cm sur le plan = 250 m en réalité' },
-    { num: 1, den: 50000, str: '1/50000', label: '1 cm sur le plan = 500 m en réalité' },
-  ];
-  const ech = pick(echelles);
+  const type = pick([1, 2, 3, 4]);
 
+  const fmtNum = (x, maxDec) => {
+    if (Number.isInteger(x)) return `${x}`;
+    const s = x.toFixed(maxDec);
+    // Supprimer les zéros inutiles
+    const trimmed = parseFloat(s).toString();
+    return trimmed.replace('.', '{,}');
+  };
+
+  const RED = s => `<span style="color:#c0392b;font-weight:600;">${s}</span>`;
+
+  const genNForRange = (minN, maxN) => {
+    const ranges = [
+      { min: 4,       max: 10,       step: 1      },
+      { min: 10,      max: 100,      step: 5      },
+      { min: 100,     max: 1000,     step: 50     },
+      { min: 1000,    max: 10000,    step: 500    },
+      { min: 10000,   max: 100000,   step: 5000   },
+      { min: 100000,  max: 1000000,  step: 50000  },
+      { min: 1000000, max: 10000000, step: 500000 },
+    ];
+    const candidates = [];
+    for (const r of ranges) {
+      const lo = Math.max(minN, r.min);
+      const hi = Math.min(maxN, r.max);
+      if (lo > hi) continue;
+      const s = Math.ceil(lo / r.step) * r.step;
+      for (let n = s; n <= hi; n += r.step) candidates.push(n);
+    }
+    return candidates.length > 0 ? pick(candidates) : null;
+  };
+
+  const fmtN = n => n >= 10000 ? n.toLocaleString('fr-FR') : `${n}`;
+
+  // Vérifie qu'un nombre a au plus 1 décimale
+  const hasAtMost1Dec = x => Number.isInteger(Math.round(x * 10));
+
+  // ── CARTE : realCm entre 100000 et 100000000 ──
+  // d en km = realCm / 100000, doit avoir ≤ 1 décimale
+  // distance sur carte = realCm / n, doit avoir ≤ 1 décimale
+  const genValidCarte = () => {
+    for (let attempts = 0; attempts < 5000; attempts++) {
+      const n = genNForRange(4000, 10000000);
+      if (!n) continue;
+      // Choisir realCm entier dans [100000, 100000000]
+      // tel que realCm/n ≤ 1 déc et realCm/100000 ≤ 1 déc
+      // realCm/100000 ≤ 1 déc ↔ realCm % 10000 === 0
+      // realCm/n ≤ 1 déc ↔ (realCm*10) % n === 0
+      // Donc realCm doit être multiple de lcm(10000, n/pgcd(n,10))
+      const g = pgcd(n, 10);
+      const stepN = n / g;           // pour que realCm*10 % n = 0
+      const stepKm = 10000;          // pour que realCm % 10000 = 0
+      const stepLcm = ppcm(stepN, stepKm);
+      const loK = Math.ceil(100000 / stepLcm);
+      const hiK = Math.floor(100000000 / stepLcm);
+      if (loK > hiK) continue;
+      const k = rand(loK, hiK);
+      const realCm = k * stepLcm;
+      const carteCm = realCm / n;
+      if (!hasAtMost1Dec(carteCm)) continue;
+      if (carteCm < 1 || carteCm > 25) continue;
+      const dKm = realCm / 100000;
+      if (!hasAtMost1Dec(dKm)) continue;
+      if (dKm < 0.1) continue;
+      return { n, realCm, carteCm, dKm };
+    }
+    return null;
+  };
+
+  // ── PLAN : realCm entre 100 et 10000 ──
+  // d en m = realCm / 100, doit avoir ≤ 1 décimale
+  // distance sur plan = realCm / n, doit avoir ≤ 1 décimale
+  const genValidPlan = () => {
+    for (let attempts = 0; attempts < 5000; attempts++) {
+      const n = genNForRange(4, 10000);
+      if (!n) continue;
+      const g = pgcd(n, 10);
+      const stepN = n / g;
+      const stepM = 10;              // pour que realCm % 10 = 0 → dM ≤ 1 déc
+      const stepLcm = ppcm(stepN, stepM);
+      const loK = Math.ceil(100 / stepLcm);
+      const hiK = Math.floor(10000 / stepLcm);
+      if (loK > hiK) continue;
+      const k = rand(loK, hiK);
+      const realCm = k * stepLcm;
+      const planCm = realCm / n;
+      if (!hasAtMost1Dec(planCm)) continue;
+      if (planCm < 1 || planCm > 25) continue;
+      const dM = realCm / 100;
+      if (!hasAtMost1Dec(dM)) continue;
+      if (dM < 0.1) continue;
+      return { n, realCm, planCm, dM };
+    }
+    return null;
+  };
+
+  const makeTab = (rowLabel, col2top, col2bot, col3top, col3bot, knowTop) => {
+    const cell = s => `<td style="border:1.5px solid #b8b0a4; padding:8px 18px; text-align:center; font-family:'Lora',serif;">${s}</td>`;
+    const header = s => `<td style="border:1.5px solid #b8b0a4; padding:8px 18px; text-align:center; font-weight:600; background:#f0ece4;">${s}</td>`;
+    const topRight = knowTop ? `$${col3top}$` : RED(`$${col3top}$`);
+    const botRight = knowTop ? RED(`$${col3bot}$`) : `$${col3bot}$`;
+    return `<div style="margin:14px 0; overflow-x:auto;">
+<table style="border-collapse:collapse; margin:0 auto; font-size:1rem;">
+  <tr>${header(`${rowLabel} (cm)`)}${cell(`$${col2top}$`)}${cell(topRight)}</tr>
+  <tr>${header('Réalité (cm)')}${cell(`$${col2bot}$`)}${cell(botRight)}</tr>
+</table>
+</div>`;
+  };
+
+  // ── TYPE 1 : on donne carteCm → cherche réalité en km ──
   if (type === 1) {
-    // Mesure sur plan → réalité
-    const planCm = pick([1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15]);
-    const realCm = planCm * ech.den;
-    const realM = realCm / 100;
-    const realKm = realM / 1000;
-    let realStr;
-    if (realM >= 1000) realStr = `$${realKm}$ km`;
-    else if (realM >= 1) realStr = `$${realM}$ m`;
-    else realStr = `$${realCm}$ cm`;
-
+    const res = genValidCarte();
+    if (!res) return G[111]();
+    const { n, realCm, carteCm, dKm } = res;
+    const nFmt = fmtN(n);
+    const realCmFmt = realCm.toLocaleString('fr-FR');
+    const carteCmStr = fmtNum(carteCm, 1);
+    const dKmStr = fmtNum(dKm, 1);
+    const tab = makeTab('Carte', '1', nFmt, carteCmStr, realCmFmt, true);
     return {
-      question: `Sur un plan à l'échelle $${ech.str}$, une route mesure $${planCm}$ cm. Quelle est la longueur réelle de cette route ?`,
-      correction: `L'échelle $${ech.str}$ signifie que ${ech.label}.\n\nLongueur réelle :\n\n$$${planCm} \\times ${ech.den} = ${realCm} \\text{ cm} = ${realStr}$$`
-    };
-  } else {
-    // Réalité → mesure sur plan
-    const realM = pick([10, 20, 25, 50, 100, 150, 200, 250, 500, 1000]);
-    const realCm = realM * 100;
-    const planCm = realCm / ech.den;
-    if (!Number.isInteger(planCm * 10)) return G[111]();
-    const planStr = Number.isInteger(planCm) ? `${planCm}` : `${planCm.toFixed(1)}`;
-
-    return {
-      question: `Sur un plan à l'échelle $${ech.str}$, quelle longueur doit-on tracer pour représenter une distance réelle de $${realM}$ m ?`,
-      correction: `L'échelle $${ech.str}$ signifie que ${ech.label}.\n\nLongueur sur le plan :\n\n$$${realCm} \\div ${ech.den} = ${planStr} \\text{ cm}$$`
+      question: `Sur une carte à l'échelle $\\dfrac{1}{${nFmt}}$, la distance entre deux villes est de $${carteCmStr}$ cm.\n\nQuelle est la distance réelle entre ces deux villes ?`,
+      correction:
+        `L'échelle $\\dfrac{1}{${nFmt}}$ signifie que $1\\,\\text{cm}$ sur la carte $= ${nFmt}\\,\\text{cm}$ en réalité.\n\n` +
+        `On peut traduire la situation avec un tableau de proportionnalité :\n\n` +
+        tab +
+        `$$${carteCmStr} \\times ${nFmt} = ${realCmFmt}\\,\\text{cm}$$\n\n` +
+        `Donc, la distance réelle entre ces deux villes est de $${dKmStr}\\,\\text{km}$.`
     };
   }
+
+  // ── TYPE 2 (1 bis) : on donne dKm → cherche carteCm ──
+  if (type === 2) {
+    const res = genValidCarte();
+    if (!res) return G[111]();
+    const { n, realCm, carteCm, dKm } = res;
+    const nFmt = fmtN(n);
+    const realCmFmt = realCm.toLocaleString('fr-FR');
+    const carteCmStr = fmtNum(carteCm, 1);
+    const dKmStr = fmtNum(dKm, 1);
+    const tab = makeTab('Carte', '1', nFmt, carteCmStr, realCmFmt, false);
+    return {
+      question: `Deux villes sont distantes de $${dKmStr}$ km.  \nQuelle est la distance entre elles sur une carte à l'échelle $\\dfrac{1}{${nFmt}}$ ?`,
+      correction:
+        `L'échelle $\\dfrac{1}{${nFmt}}$ signifie que $1\\,\\text{cm}$ sur la carte $= ${nFmt}\\,\\text{cm}$ en réalité.\n\n` +
+        `On convertit la distance réelle en cm : $${dKmStr}\\,\\text{km} = ${realCmFmt}\\,\\text{cm}$\n\n` +
+        `On peut traduire la situation avec un tableau de proportionnalité :\n\n` +
+        tab +
+        `$$${realCmFmt} \\div ${nFmt} = ${carteCmStr}\\,\\text{cm}$$\n\n` +
+        `Donc, la distance sur la carte entre ces deux villes est de $${carteCmStr}\\,\\text{cm}$.`
+    };
+  }
+
+  // ── TYPE 3 : on donne planCm → cherche réalité en m ──
+  if (type === 3) {
+    const res = genValidPlan();
+    if (!res) return G[111]();
+    const { n, realCm, planCm, dM } = res;
+    const nFmt = fmtN(n);
+    const planCmStr = fmtNum(planCm, 1);
+    const dMStr = fmtNum(dM, 1);
+    const tab = makeTab('Plan', '1', nFmt, planCmStr, `${realCm}`, true);
+    return {
+      question: `Sur un plan à l'échelle $\\dfrac{1}{${nFmt}}$, la distance entre deux points est de $${planCmStr}$ cm.\n\nQuelle est la distance réelle entre ces deux points ?`,
+      correction:
+        `L'échelle $\\dfrac{1}{${nFmt}}$ signifie que $1\\,\\text{cm}$ sur le plan $= ${nFmt}\\,\\text{cm}$ en réalité.\n\n` +
+        `On peut traduire la situation avec un tableau de proportionnalité :\n\n` +
+        tab +
+        `$$${planCmStr} \\times ${nFmt} = ${realCm}\\,\\text{cm}$$\n\n` +
+        `Donc, la distance réelle entre ces deux points est de $${dMStr}\\,\\text{m}$.`
+    };
+  }
+
+  // ── TYPE 4 (2 bis) : on donne dM → cherche planCm ──
+  const res = genValidPlan();
+  if (!res) return G[111]();
+  const { n, realCm, planCm, dM } = res;
+  const nFmt = fmtN(n);
+  const planCmStr = fmtNum(planCm, 1);
+  const dMStr = fmtNum(dM, 1);
+  const tab = makeTab('Plan', '1', nFmt, planCmStr, `${realCm}`, false);
+  return {
+    question: `Deux points sont distants de $${dMStr}$ m.  \nQuelle est la distance entre eux sur un plan à l'échelle $\\dfrac{1}{${nFmt}}$ ?`,
+    correction:
+      `L'échelle $\\dfrac{1}{${nFmt}}$ signifie que $1\\,\\text{cm}$ sur le plan $= ${nFmt}\\,\\text{cm}$ en réalité.\n\n` +
+      `On convertit la distance réelle en cm : $${dMStr}\\,\\text{m} = ${realCm}\\,\\text{cm}$\n\n` +
+      `On peut traduire la situation avec un tableau de proportionnalité :\n\n` +
+      tab +
+      `$$${realCm} \\div ${nFmt} = ${planCmStr}\\,\\text{cm}$$\n\n` +
+      `Donc, la distance sur le plan entre ces deux points est de $${planCmStr}\\,\\text{cm}$.`
+  };
 };
 
 G[112] = () => {
@@ -3547,16 +3696,14 @@ G[112] = () => {
 G[113] = () => {
   let p, q, res;
   let attempts = 0;
-
   do {
     attempts++;
     p = rand(1, 99);
-    q = Math.random() < 0.70 ? rand(1, 200) : rand(1, 999);
+    const r = Math.random();
+    q = r < 0.40 ? rand(1, 100) : r < 0.70 ? rand(101, 200) : rand(201, 999);
     res = q * p / 100;
   } while (!Number.isInteger(res) || attempts > 5000);
-
   const pDecStr = (p / 100).toFixed(2).replace('.', '{,}');
-
   return {
     question: `Calculer :\n\n$$${p}\\% \\text{ de } ${q}$$`,
     correction:
@@ -3566,64 +3713,98 @@ G[113] = () => {
 };
 
 G[114] = () => {
-  const type = pick([1, 2, 3]);
+  const type = pick([1, 2, 3, 4]);
+  const wantInteger = Math.random() < 0.5;
 
-  const isValid = (part, total) => Number.isInteger((part * 1000) / total);
+  const isIntegerPct = (part, total) => Number.isInteger((part / total) * 100);
+  const isValidDecimal = (part, total) => {
+    const pct = (part / total) * 100;
+    return !Number.isInteger(pct) && Number.isInteger(Math.round(pct * 10));
+  };
 
-  let a, b, fracTop, fracBot, intro, conclusion;
+  let total, part, intro, conclusion;
 
-  if (type === 1) {
-    let attempts = 0;
-    do { a = rand(15, 49); b = rand(1, a - 1); attempts++; }
-    while (!isValid(b, a) && attempts < 5000);
-    fracTop = '\\text{sportifs}'; fracBot = '\\text{total élèves}';
-    intro = `Le pourcentage correspond à $${frac(fracTop, fracBot)}$ :`;
-    conclusion = `Donc, le pourcentage d'élèves sportifs dans la classe est de $${((b/a)*100).toFixed(1).replace('.', '{,}')}\\%$.`;
-    return buildResult(a, b, intro, conclusion);
-  }
-
-  if (type === 2) {
-    let attempts = 0;
-    do { a = rand(200, 999); b = rand(1, a - 1); attempts++; }
-    while (!isValid(b, a) && attempts < 5000);
-    fracTop = '\\text{externes}'; fracBot = '\\text{total élèves}';
-    intro = `Le pourcentage correspond à $${frac(fracTop, fracBot)}$ :`;
-    conclusion = `Donc, le pourcentage d'élèves externes dans le collège est de $${((b/a)*100).toFixed(1).replace('.', '{,}')}\\%$.`;
-    return buildResult(a, b, intro, conclusion);
-  }
-
-  // type 3
-  let attempts = 0;
-  do { b = rand(50, 200); a = rand(Math.ceil(b / 2), b - 1); attempts++; }
-  while (!isValid(a, b) && attempts < 5000);
-  fracTop = '\\text{tirs réussis}'; fracBot = '\\text{tirs tentés}';
-  intro = `Le pourcentage correspond à $${frac(fracTop, fracBot)}$ :`;
-  conclusion = `Donc, son pourcentage de réussite cette saison est de $${((a/b)*100).toFixed(1).replace('.', '{,}')}\\%$.`;
-  return buildResult(b, a, intro, conclusion);
-
-  function buildResult(total, part, intro, conclusion) {
+  const buildResult = () => {
     const ratio = part / total;
     const pct = ratio * 100;
-    const pctStr = Number.isInteger(pct)
-      ? `${pct}`
-      : pct.toFixed(1).replace('.', '{,}');
-    const decStr = ratio.toFixed(3).replace('.', '{,}');
+
+    let decStr, pctStr, firstEq, secondEq;
+
+    if (wantInteger) {
+      decStr = ratio.toFixed(2).replace('.', '{,}');
+      pctStr = `${Math.round(pct)}`;
+      firstEq = '=';
+    } else {
+      decStr = ratio.toFixed(3).replace('.', '{,}');
+      pctStr = pct.toFixed(1).replace('.', '{,}');
+      firstEq = '\\approx';
+    }
 
     let question;
+    const calcLine = wantInteger ? '' : '  \n*(Calculatrice autorisée)*';
+
     if (type === 1)
-      question = `Dans une classe de $${total}$ élèves, $${part}$ élèves font du sport.  \nQuel est le pourcentage d'élèves sportifs dans la classe ?`;
+      question = `Dans une classe de $${total}$ élèves, $${part}$ élèves font du sport.  \nQuel est le pourcentage d'élèves sportifs dans la classe ?${calcLine}`;
     else if (type === 2)
-      question = `Dans un collège de $${total}$ élèves, $${part}$ élèves sont externes.  \nQuel est le pourcentage d'élèves externes dans le collège ?`;
+      question = `Dans un collège de $${total}$ élèves, $${part}$ élèves sont externes.  \nQuel est le pourcentage d'élèves externes dans le collège ?${calcLine}`;
+    else if (type === 3)
+      question = `Cette saison, une joueuse de basket a mis $${part}$ lancers-francs sur $${total}$ tentés.  \nQuel est son pourcentage de réussite cette saison aux lancers-francs ?${calcLine}`;
     else
-      question = `Cette saison, une joueuse de basket a mis $${part}$ lancers-francs sur $${total}$ tentés.  \nQuel est son pourcentage de réussite cette saison aux lancers-francs ?`;
+      question = `Dans un groupe de $${total}$ élèves, $${part}$ ont un animal de compagnie.  \nQuel est le pourcentage d'élèves possédant un animal de compagnie ?${calcLine}`;
+
+    const aboutStr = wantInteger ? 'est de' : 'est d\'environ';
 
     const correction =
       `${intro}\n\n` +
-      `$$${frac(part, total)} \\times 100 = ${decStr} \\times 100 = ${pctStr}$$\n\n` +
-      `${conclusion}`;
+      `$$${frac(part, total)} \\times 100 ${firstEq} ${decStr} \\times 100 = ${pctStr}$$\n\n` +
+      `${conclusion(pctStr, aboutStr)}`;
 
     return { question, correction };
+  };
+
+  let attempts = 0;
+
+  if (type === 1) {
+    intro = `Le pourcentage correspond à $${frac('\\text{sportifs}', '\\text{total élèves}')}$ :`;
+    conclusion = (pctStr, aboutStr) => `Donc, le pourcentage d'élèves sportifs dans la classe ${aboutStr} $${pctStr}\\%$.`;
+    do {
+      total = rand(15, 49);
+      part = rand(1, total - 1);
+      attempts++;
+    } while (attempts < 5000 && (wantInteger ? !isIntegerPct(part, total) : !isValidDecimal(part, total)));
   }
+
+  else if (type === 2) {
+    intro = `Le pourcentage correspond à $${frac('\\text{externes}', '\\text{total élèves}')}$ :`;
+    conclusion = (pctStr, aboutStr) => `Donc, le pourcentage d'élèves externes dans le collège ${aboutStr} $${pctStr}\\%$.`;
+    do {
+      total = rand(200, 999);
+      part = rand(1, total - 1);
+      attempts++;
+    } while (attempts < 5000 && (wantInteger ? !isIntegerPct(part, total) : !isValidDecimal(part, total)));
+  }
+
+  else if (type === 3) {
+    intro = `Le pourcentage correspond à $${frac('\\text{tirs réussis}', '\\text{tirs tentés}')}$ :`;
+    conclusion = (pctStr, aboutStr) => `Donc, son pourcentage de réussite cette saison ${aboutStr} $${pctStr}\\%$.`;
+    do {
+      total = rand(50, 200);
+      part = rand(Math.ceil(total / 2), total - 1);
+      attempts++;
+    } while (attempts < 5000 && (wantInteger ? !isIntegerPct(part, total) : !isValidDecimal(part, total)));
+  }
+
+  else {
+    intro = `Le pourcentage correspond à $${frac('\\text{élèves avec animal}', '\\text{total élèves}')}$ :`;
+    conclusion = (pctStr, aboutStr) => `Donc, le pourcentage d'élèves possédant un animal de compagnie ${aboutStr} $${pctStr}\\%$.`;
+    do {
+      total = rand(15, 100);
+      part = rand(1, total - 1);
+      attempts++;
+    } while (attempts < 5000 && (wantInteger ? !isIntegerPct(part, total) : !isValidDecimal(part, total)));
+  }
+
+  return buildResult();
 };
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
