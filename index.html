@@ -209,10 +209,11 @@ function renderKatex(el) {
 
 function renderContent(rawText, el) {
   if (!rawText) { el.innerHTML = ''; return; }
-  // Stash LaTeX before Markdown parse
   const stash = [];
   const uid = () => `@@M${stash.length - 1}@@`;
   let s = rawText
+    .replace(/<svg[\s\S]*?<\/svg>/g, m => { stash.push(m); return uid(); })
+    .replace(/<div[\s\S]*?<\/div>/g, m => { stash.push(m); return uid(); })
     .replace(/\$\$([\s\S]*?)\$\$/g,  m => { stash.push(m); return uid(); })
     .replace(/(?<!\$)\$(?!\$)((?:[^$\\]|\\[\s\S])+?)\$(?!\$)/g, m => { stash.push(m); return uid(); });
   let html = marked.parse(s);
@@ -827,14 +828,80 @@ G[23] = () => {
 };
 
 G[24] = () => {
-  const pts = ['A','B','C'].slice(0,rand(2,3));
-  const coords = pts.map(()=>[rand(-4,4),rand(-4,4)]);
-  const desc = pts.map((p,i)=>`$${p}$ : ${coords[i][0]} vers la ${coords[i][0]>=0?'droite':'gauche'} et ${Math.abs(coords[i][1])} vers le ${coords[i][1]>=0?'haut':'bas'}`).join(' ; ');
+  const x = rand(-6, 6);
+  const y = rand(-5, 5);
+
+  const margin = 36;
+  const cellW = 28;
+  const cellH = 28;
+  const cols = 13;
+  const rows = 11;
+  const W = margin * 2 + cellW * (cols - 1);
+  const H = margin * 2 + cellH * (rows - 1);
+
+  const px = xVal => margin + (xVal + 6) * cellW;
+  const py = yVal => margin + (5 - yVal) * cellH;
+
+  const ox = px(0), oy = py(0);
+
+  let gridLines = '';
+  for (let i = -6; i <= 6; i++) {
+    gridLines += `<line x1="${px(i)}" y1="${margin}" x2="${px(i)}" y2="${H - margin}" stroke="#ddd8cf" stroke-width="1"/>`;
+  }
+  for (let j = -5; j <= 5; j++) {
+    gridLines += `<line x1="${margin}" y1="${py(j)}" x2="${W - margin}" y2="${py(j)}" stroke="#ddd8cf" stroke-width="1"/>`;
+  }
+
+  const axes = `
+    <line x1="${margin}" y1="${oy}" x2="${W - margin}" y2="${oy}" stroke="#1a1714" stroke-width="1.5"/>
+    <line x1="${ox}" y1="${margin}" x2="${ox}" y2="${H - margin}" stroke="#1a1714" stroke-width="1.5"/>
+    <polygon points="${W - margin},${oy} ${W - margin - 8},${oy - 4} ${W - margin - 8},${oy + 4}" fill="#1a1714"/>
+    <polygon points="${ox},${margin} ${ox - 4},${margin + 8} ${ox + 4},${margin + 8}" fill="#1a1714"/>
+  `;
+
+  let ticksX = '';
+  for (let i = -6; i <= 5; i++) {
+    if (i === 6) continue;
+    ticksX += `<line x1="${px(i)}" y1="${oy - 5}" x2="${px(i)}" y2="${oy + 5}" stroke="#1a1714" stroke-width="1.5"/>`;
+  }
+  ticksX += `<text x="${px(1)}" y="${oy + 20}" text-anchor="middle" font-family="Lora,serif" font-size="12" fill="#1a1714">1</text>`;
+
+  let ticksY = '';
+  for (let j = -5; j <= 4; j++) {
+    if (j === 5) continue;
+    ticksY += `<line x1="${ox - 5}" y1="${py(j)}" x2="${ox + 5}" y2="${py(j)}" stroke="#1a1714" stroke-width="1.5"/>`;
+  }
+  ticksY += `<text x="${ox - 14}" y="${py(1) + 5}" text-anchor="middle" font-family="Lora,serif" font-size="12" fill="#1a1714">1</text>`;
+
+  const labelO = `<text x="${ox - 14}" y="${oy + 18}" font-family="Lora,serif" font-size="12" fill="#1a1714">0</text>`;
+
+  const labelAxes = `
+    <text x="${W - margin + 10}" y="${oy + 5}" font-family="Lora,serif" font-size="12" fill="#1a1714" font-style="italic">x</text>
+    <text x="${ox + 10}" y="${margin + 5}" font-family="Lora,serif" font-size="12" fill="#1a1714" font-style="italic">y</text>
+  `;
+
+  const ptX = px(x), ptY = py(y);
+  const labelOffX = x >= 4 ? -20 : 10;
+  const labelOffY = y >= 4 ? 20 : -10;
+
+  const point = `
+    <circle cx="${ptX}" cy="${ptY}" r="3" fill="#c0392b"/>
+    <text x="${ptX + labelOffX}" y="${ptY + labelOffY}" font-family="Lora,serif" font-size="14" font-weight="600" fill="#c0392b">A</text>
+  `;
+
+  const svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="max-width:100%; display:block; margin:16px auto;">
+    ${gridLines}
+    ${axes}
+    ${ticksX}
+    ${ticksY}
+    ${labelO}
+    ${labelAxes}
+    ${point}
+  </svg>`;
+
   return {
-    // question: `Dans un repère $(O;I;J)$, un point est décrit par sa position. ${pts.map((p,i)=>`$${p}$ est à $${Math.abs(coords[i][0])}$ unité(s) vers la ${coords[i][0]>=0?'droite':'gauche'} et $${Math.abs(coords[i][1])}$ vers le ${coords[i][1]>=0?'haut':'bas'}`).join(' ; ')}. Donne les coordonnées de chaque point.`,
-    // correction: pts.map((p,i)=>`$${p}(${coords[i][0]}\\,;\\,${coords[i][1]})$`).join(', ') + '\n\n*La première coordonnée est l\'abscisse (axe horizontal), la deuxième l\'ordonnée (axe vertical).*'
-    question: `En cours de construction ...`,
-    correction: ``
+    question: `Quelles sont les coordonnées du point $A$ dans le repère ci-dessous ?\n\n${svg}`,
+    correction: `Le point $A$ a pour coordonnées :\n\n$$A\\,(${x}\\,;\\,${y})$$\n\nL'abscisse de $A$ est $${x}$ (position sur l'axe horizontal) et l'ordonnée de $A$ est $${y}$ (position sur l'axe vertical).`
   };
 };
 
@@ -1930,36 +1997,372 @@ G[67] = () => {
 
 // ── SÉQUENCE 7 : Proportionnalité ─────────────────────────────────────────────
 G[71] = () => {
-  const coeff=rand(2,8), x1=rand(2,5), x2=rand(2,5);
-  const ctx=pick([
-    {u1:'kg', u2:'€', item:'pommes'},
-    {u1:'L',  u2:'€', item:'lait'},
-    {u1:'pièces', u2:'€', item:'stylos'},
-  ]);
-  const y1=x1*coeff, y2=x2*coeff;
-  const x3=rand(2,6), y3=x3*(coeff+pick([1,-1])); // ne respecte pas la proportionnalité
-  const rows=shuffle([[x1,y1],[x2,y2],[x3,y3]]);
+  const isProportional = Math.random() < 0.5;
+
+  const fmtNum = x => Number.isInteger(x) ? `${x}` : `${x.toFixed(1).replace('.', '{,}')}`;
+  const isClean = x => Math.abs(x * 10 - Math.round(x * 10)) < 1e-9;
+
+  // Coefficients k entre 1.5 et 10
+  const kValues = [];
+  for (let v = 15; v <= 100; v += 5) kValues.push(v / 10);
+
+  let k, tops, bots;
+  let attempts = 0;
+
+  do {
+    attempts++;
+    k = pick(kValues);
+    tops = [];
+    for (let i = 0; i < 3; i++) {
+      tops.push(Math.random() < 0.60 ? rand(2, 12) : rand(2, 20));
+    }
+    if (new Set(tops).size !== 3) continue;
+    bots = tops.map(t => k * t);
+    // Les valeurs du bas doivent avoir au plus 1 décimale exactement
+    if (!bots.every(b => isClean(b))) continue;
+    break;
+  } while (attempts < 3000);
+
+  // Pour le cas non-proportionnel : modifier une colonne en ajoutant ±1 ou ±0.5
+  // Pour le cas non-proportionnel
+  if (!isProportional) {
+    let found = false;
+    for (let att = 0; att < 2000 && !found; att++) {
+      const altCol = pick([0, 1, 2]);
+      const delta = pick([-3, -2, -1.5, -1, 1, 1.5, 2, 3]);
+      const newBot = Math.round((bots[altCol] + delta) * 10) / 10;
+      if (newBot <= 0) continue;
+      if (!isClean(newBot)) continue;
+      if (Math.abs(newBot - bots[altCol]) < 1e-9) continue;
+
+      // Vérifier que le rapport arrondi à 1 déc est bien différent des autres
+      const newRatio = Math.round((newBot / tops[altCol]) * 10) / 10;
+      const otherRatios = [0, 1, 2]
+        .filter(i => i !== altCol)
+        .map(i => Math.round((bots[i] / tops[i]) * 10) / 10);
+
+      if (otherRatios.some(r => Math.abs(r - newRatio) < 1e-9)) continue;
+
+      bots = [...bots];
+      bots[altCol] = newBot;
+      found = true;
+    }
+  }
+
+  const cols = shuffle([0, 1, 2]);
+  const topsShuffled = cols.map(i => tops[i]);
+  const botsShuffled = cols.map(i => bots[i]);
+
+  // Calcul des rapports — arrondis à 1 décimale pour l'affichage
+  const ratiosShuffled = botsShuffled.map((b, i) => b / topsShuffled[i]);
+
+  const cell = s => `<td style="border:1.5px solid #b8b0a4; padding:6px 18px; text-align:center; font-family:'Lora',serif;">${s}</td>`;
+
+  const tableau = `<div style="margin:14px 0; overflow-x:auto;">
+<table style="border-collapse:collapse; margin:0 auto; font-size:1rem;">
+  <tr>${topsShuffled.map(v => cell(`$${fmtNum(v)}$`)).join('')}</tr>
+  <tr>${botsShuffled.map(v => cell(`$${fmtNum(v)}$`)).join('')}</tr>
+</table>
+</div>`;
+
+  const ratioLines = ratiosShuffled.map((r, i) => {
+    const top = fmtNum(topsShuffled[i]);
+    const bot = fmtNum(botsShuffled[i]);
+    // Affichage du rapport : si c'est un entier ou propre, on l'affiche tel quel, sinon arrondi à 1 déc
+    const ratDisplay = isClean(r) ? fmtNum(Math.round(r * 10) / 10) : fmtNum(Math.round(r * 10) / 10);
+    return `- $${bot} \\div ${top} \\approx ${ratDisplay}$`;
+  }).map((line, i) => {
+    // Si le rapport est exact (entier ou 1 déc), remplace ≈ par =
+    const r = ratiosShuffled[i];
+    if (isClean(r)) return line.replace('\\approx', '=');
+    return line;
+  }).join('\n');
+
+  const allEqual = ratiosShuffled.every(r => Math.abs(r - ratiosShuffled[0]) < 1e-9);
+  const conclusion = allEqual
+    ? `Les rapports sont tous égaux.  \nDonc, il s'agit d'un tableau de proportionnalité et le coefficient de proportionnalité est $${fmtNum(k)}$.`
+    : `Les rapports ne sont pas tous égaux.  \nDonc, il ne s'agit pas d'un tableau de proportionnalité.`;
+
   return {
-    question: `On observe ces données :\n\n| Quantité (${ctx.u1}) | ${rows[0][0]} | ${rows[1][0]} | ${rows[2][0]} |\n|:---:|:---:|:---:|:---:|\n| Prix (${ctx.u2}) | ${rows[0][1]} | ${rows[1][1]} | ${rows[2][1]} |\n\nCette situation est-elle proportionnelle ? Justifie en calculant les rapports.`,
-    correction: `On calcule $\\frac{\\text{prix}}{\\text{quantité}}$ pour chaque colonne :\n\n- $${frac(rows[0][1],rows[0][0])} = ${rows[0][1]/rows[0][0]}$\n- $${frac(rows[1][1],rows[1][0])} = ${rows[1][1]/rows[1][0]}$\n- $${frac(rows[2][1],rows[2][0])} = ${(rows[2][1]/rows[2][0]).toFixed(2)}$\n\nLes rapports ne sont pas tous égaux, donc cette situation **n'est pas proportionnelle**.`
+    question: `Le tableau suivant est-il un tableau de proportionnalité ?\n\n${tableau}`,
+    correction: `On calcule le rapport pour chaque colonne :\n\n${ratioLines}\n\n${conclusion}`
   };
 };
 
 G[72] = () => {
-  const k=rand(2,8), x=rand(2,6), y=k*x;
-  const item=pick(['pommes','stylos','cahiers','cartes']);
+  const fmtNum = x => Number.isInteger(x) ? `${x}` : `${x.toFixed(1).replace('.', '{,}')}`;
+  const isClean1 = x => Math.abs(x * 10 - Math.round(x * 10)) < 1e-9;
+  const isClean2 = x => Math.abs(x * 100 - Math.round(x * 100)) < 1e-9; // pour vérif intermédiaire
+
+  const wantSmallK = Math.random() < 0.30;
+
+  const kValues = wantSmallK
+    ? [0.1, 0.2, 0.25, 0.4, 0.5, 0.6, 0.75, 0.8]
+    : (() => { const a = []; for (let v = 10; v <= 100; v += 5) if (v !== 10) a.push(v / 10); return a; })();
+
+  let k, tops, bots;
+  let attempts = 0;
+
+  do {
+    attempts++;
+    k = pick(kValues);
+    tops = [];
+
+    if (wantSmallK) {
+      for (let i = 0; i < 3; i++) {
+        const candidates = [];
+        for (let t = 2; t <= 40; t++) {
+          const bot = k * t;
+          // Vérification exacte : bot doit avoir au plus 1 décimale
+          if (isClean1(bot) && bot >= 1 && bot <= 30) candidates.push(t);
+        }
+        if (candidates.length === 0) continue;
+        tops.push(pick(candidates));
+      }
+    } else {
+      for (let i = 0; i < 3; i++) {
+        tops.push(Math.random() < 0.60 ? rand(2, 12) : rand(2, 20));
+      }
+    }
+
+    if (tops.length !== 3) continue;
+    if (new Set(tops).size !== 3) continue;
+
+    // Calcul exact sans arrondi
+    bots = tops.map(t => k * t);
+
+    // Vérification stricte : chaque bot doit avoir au plus 1 décimale EXACTEMENT
+    if (!bots.every(b => isClean1(b) && b > 0)) continue;
+
+    // Vérification du rapport : bot/top doit exactement valoir k
+    if (!bots.every((b, i) => Math.abs(b / tops[i] - k) < 1e-9)) continue;
+
+    break;
+  } while (attempts < 3000);
+
+  const cols = shuffle([0, 1, 2]);
+  const topsShuffled = cols.map(i => tops[i]);
+  const botsShuffled = cols.map(i => bots[i]);
+
+  // Colonne la plus simple : priorité aux valeurs entières, puis plus grand top
+  const scores = topsShuffled.map((t, i) => {
+    const b = botsShuffled[i];
+    const topInt = Number.isInteger(t) ? 0 : 2;
+    const botInt = Number.isInteger(b) ? 0 : 1;
+    return topInt + botInt;
+  });
+  const minScore = Math.min(...scores);
+  const bestCandidates = scores.map((s, i) => ({ s, i })).filter(x => x.s === minScore);
+  const bestCol = bestCandidates.reduce((best, x) =>
+    topsShuffled[x.i] > topsShuffled[best.i] ? x : best
+  ).i;
+
+  const cell = s => `<td style="border:1.5px solid #b8b0a4; padding:6px 18px; text-align:center; font-family:'Lora',serif;">${s}</td>`;
+
+  const tableau = `<div style="margin:14px 0; overflow-x:auto;">
+<table style="border-collapse:collapse; margin:0 auto; font-size:1rem;">
+  <tr>${topsShuffled.map(v => cell(`$${fmtNum(v)}$`)).join('')}</tr>
+  <tr>${botsShuffled.map(v => cell(`$${fmtNum(v)}$`)).join('')}</tr>
+</table>
+</div>`;
+
+  const topStr = fmtNum(topsShuffled[bestCol]);
+  const botStr = fmtNum(botsShuffled[bestCol]);
+  const kStr = fmtNum(k);
+
   return {
-    question: `$${x}$ ${item} coûtent $${y}$ €. Quel est le coefficient de proportionnalité entre le nombre d'articles et le prix ?`,
-    correction: `$$k = \\frac{\\text{prix}}{\\text{quantité}} = ${frac(y,x)} = ${k}$$\n\nLe coefficient de proportionnalité est $${k}$ (chaque article coûte $${k}$ €).`
+    question: `Déterminer le coefficient de proportionnalité du tableau de proportionnalité suivant :\n\n${tableau}`,
+    correction:
+      `On calcule le rapport d'une seule colonne :\n\n` +
+      `$$${botStr} \\div ${topStr} = ${kStr}$$\n\n` +
+      `Donc, le coefficient de proportionnalité est égal à $${kStr}$`
   };
 };
 
 G[73] = () => {
-  const k=rand(2,9), x=rand(3,8), xunk=rand(2,7);
-  const y=k*x;
+  const type = pick([1, 1, 2]); // type 1 plus fréquent
+  const fmtNum = x => Number.isInteger(x) ? `${x}` : `${x.toFixed(1).replace('.', '{,}')}`;
+  const isClean1 = x => Math.abs(x * 10 - Math.round(x * 10)) < 1e-9;
+  const RED = s => `<span style="color:#c0392b;font-weight:600;">${s}</span>`;
+
+  const cell = s => `<td style="border:1.5px solid #b8b0a4; padding:6px 18px; text-align:center; font-family:'Lora',serif; min-width:60px;">${s}</td>`;
+  const cellRed = s => `<td style="border:1.5px solid #b8b0a4; padding:6px 18px; text-align:center; font-family:'Lora',serif; min-width:60px; color:#c0392b; font-weight:600;">${s}</td>`;
+
+  const makeTab = (r1c1, r1c2, r2c1, r2c2) => `<div style="margin:14px 0; overflow-x:auto;">
+<table style="border-collapse:collapse; margin:0 auto; font-size:1rem;">
+  <tr>${r1c1}${r1c2}</tr>
+  <tr>${r2c1}${r2c2}</tr>
+</table>
+</div>`;
+
+  // ── TYPE 1 ──────────────────────────────────────────────────────────────
+  if (type === 1) {
+    const wantSmallK = Math.random() < 0.25;
+    const kValues = wantSmallK
+      ? [0.1, 0.2, 0.25, 0.4, 0.5, 0.6, 0.75, 0.8]
+      : (() => { const a = []; for (let v = 15; v <= 100; v += 5) a.push(v / 10); return a; })();
+
+    let k, a, b, c, d;
+    let attempts = 0;
+
+    do {
+      attempts++;
+      k = pick(kValues);
+      if (k === 1) continue;
+
+      if (wantSmallK) {
+        const cands = [];
+        for (let t = 2; t <= 100; t++) {
+          const bot = k * t;
+          if (isClean1(bot) && bot >= 1 && bot <= 200) cands.push(t);
+        }
+        if (cands.length < 2) continue;
+        const shuffled = shuffle(cands);
+        a = shuffled[0]; b = shuffled[1];
+      } else {
+        a = Math.random() < 0.6 ? rand(2, 12) : rand(2, 50);
+        b = Math.random() < 0.6 ? rand(2, 12) : rand(2, 50);
+        if (a === b) continue;
+      }
+
+      c = k * a;
+      d = k * b;
+
+      if (!isClean1(c) || !isClean1(d)) continue;
+      if (c > 200 || d > 200) continue;
+      if (c <= 0 || d <= 0) continue;
+      if (Math.abs(c / a - k) > 1e-9) continue;
+
+      break;
+    } while (attempts < 3000);
+
+    // Cellule manquante : 0=a, 1=b, 2=c, 3=d
+    const missingIdx = pick([0, 1, 2, 3]);
+    const vals = [a, b, c, d];
+    const missing = vals[missingIdx];
+
+    // Colonne remplie = l'autre colonne
+    let knownTop, knownBot, missingTop, missingBot, isTopMissing, calcExpr;
+
+    if (missingIdx === 0) {
+      // a manque → colonne 1 incomplète, colonne 2 remplie
+      knownTop = b; knownBot = d;
+      missingTop = '\\ldots'; missingBot = fmtNum(c);
+      isTopMissing = true;
+      calcExpr = `${fmtNum(c)} \\div ${fmtNum(k)} = ${fmtNum(a)}`;
+    } else if (missingIdx === 1) {
+      // b manque → colonne 2 incomplète, colonne 1 remplie
+      knownTop = a; knownBot = c;
+      missingTop = '\\ldots'; missingBot = fmtNum(d);
+      isTopMissing = true;
+      calcExpr = `${fmtNum(d)} \\div ${fmtNum(k)} = ${fmtNum(b)}`;
+    } else if (missingIdx === 2) {
+      // c manque → colonne 1 incomplète, colonne 2 remplie
+      knownTop = b; knownBot = d;
+      missingTop = fmtNum(a); missingBot = '\\ldots';
+      isTopMissing = false;
+      calcExpr = `${fmtNum(a)} \\times ${fmtNum(k)} = ${fmtNum(c)}`;
+    } else {
+      // d manque → colonne 2 incomplète, colonne 1 remplie
+      knownTop = a; knownBot = c;
+      missingTop = fmtNum(b); missingBot = '\\ldots';
+      isTopMissing = false;
+      calcExpr = `${fmtNum(b)} \\times ${fmtNum(k)} = ${fmtNum(d)}`;
+    }
+
+    // Tableau question
+    const tabQ = missingIdx === 0 || missingIdx === 2
+      ? makeTab(cell(`$${missingTop}$`), cell(`$${fmtNum(knownTop)}$`), cell(`$${missingBot}$`), cell(`$${fmtNum(knownBot)}$`))
+      : makeTab(cell(`$${fmtNum(knownTop)}$`), cell(`$${missingTop}$`), cell(`$${fmtNum(knownBot)}$`), cell(`$${missingBot}$`));
+
+    // Correction : coeff de prop depuis la colonne connue
+    let coeffCalc;
+    if (missingIdx === 0 || missingIdx === 2) {
+      // colonne 2 remplie
+      coeffCalc = `$$${fmtNum(d)} \\div ${fmtNum(b)} = ${fmtNum(k)}$$`;
+    } else {
+      // colonne 1 remplie
+      coeffCalc = `$$${fmtNum(c)} \\div ${fmtNum(a)} = ${fmtNum(k)}$$`;
+    }
+
+    // Tableau correction avec réponse en rouge
+    let tabCorr;
+    if (missingIdx === 0) {
+      tabCorr = makeTab(cellRed(`$${fmtNum(a)}$`), cell(`$${fmtNum(b)}$`), cell(`$${fmtNum(c)}$`), cell(`$${fmtNum(d)}$`));
+    } else if (missingIdx === 1) {
+      tabCorr = makeTab(cell(`$${fmtNum(a)}$`), cellRed(`$${fmtNum(b)}$`), cell(`$${fmtNum(c)}$`), cell(`$${fmtNum(d)}$`));
+    } else if (missingIdx === 2) {
+      tabCorr = makeTab(cell(`$${fmtNum(a)}$`), cell(`$${fmtNum(b)}$`), cellRed(`$${fmtNum(c)}$`), cell(`$${fmtNum(d)}$`));
+    } else {
+      tabCorr = makeTab(cell(`$${fmtNum(a)}$`), cell(`$${fmtNum(b)}$`), cell(`$${fmtNum(c)}$`), cellRed(`$${fmtNum(d)}$`));
+    }
+
+    return {
+      question: `Compléter le tableau de proportionnalité suivant :\n\n${tabQ}`,
+      correction:
+        `On calcule le coefficient de proportionnalité grâce à la colonne remplie :\n\n` +
+        `${coeffCalc}\n\n` +
+        `Donc :\n\n` +
+        tabCorr +
+        `$$${calcExpr}$$`
+    };
+  }
+
+  // ── TYPE 2 : lien multiplicatif entre colonnes ───────────────────────────
+  let a, b, c, d, mult;
+  let attempts = 0;
+
+  do {
+    attempts++;
+    a = rand(2, 30);
+    mult = rand(2, 8);
+    b = a * mult;
+    const k2 = pick([2, 3, 4, 5]);
+    c = a * k2;
+    d = b * k2;
+    if (a === b || c === d || a === c || b === d) continue;
+    if (d > 300) continue;
+    break;
+  } while (attempts < 1000);
+
+  const missingIdx = pick([0, 1, 2, 3]);
+
+  let tabQ;
+  if (missingIdx === 0) {
+    tabQ = makeTab(cell(`$\\ldots$`), cell(`$${b}$`), cell(`$${c}$`), cell(`$${d}$`));
+  } else if (missingIdx === 1) {
+    tabQ = makeTab(cell(`$${a}$`), cell(`$\\ldots$`), cell(`$${c}$`), cell(`$${d}$`));
+  } else if (missingIdx === 2) {
+    tabQ = makeTab(cell(`$${a}$`), cell(`$${b}$`), cell(`$\\ldots$`), cell(`$${d}$`));
+  } else {
+    tabQ = makeTab(cell(`$${a}$`), cell(`$${b}$`), cell(`$${c}$`), cell(`$\\ldots$`));
+  }
+
+  let tabCorr;
+  if (missingIdx === 0) tabCorr = makeTab(cellRed(`$${a}$`), cell(`$${b}$`), cell(`$${c}$`), cell(`$${d}$`));
+  else if (missingIdx === 1) tabCorr = makeTab(cell(`$${a}$`), cellRed(`$${b}$`), cell(`$${c}$`), cell(`$${d}$`));
+  else if (missingIdx === 2) tabCorr = makeTab(cell(`$${a}$`), cell(`$${b}$`), cellRed(`$${c}$`), cell(`$${d}$`));
+  else tabCorr = makeTab(cell(`$${a}$`), cell(`$${b}$`), cell(`$${c}$`), cellRed(`$${d}$`));
+
+  // Explication du lien multiplicatif
+  let calcExpr2;
+  if (missingIdx === 0) calcExpr2 = `${d} \\div ${mult} = ${a}`;
+  else if (missingIdx === 1) calcExpr2 = `${a} \\times ${mult} = ${b}`;
+  else if (missingIdx === 2) calcExpr2 = `${d} \\div ${mult} = ${c}`;
+  else calcExpr2 = `${c} \\times ${mult} = ${d}`;
+
+  // Ligne du haut ou du bas connue ?
+  const sameRowLink = missingIdx <= 1
+    ? `On remarque que $${c} \\times ${mult} = ${d}$, donc on multiplie aussi par $${mult}$ sur la ligne du haut.`
+    : `On remarque que $${a} \\times ${mult} = ${b}$, donc on multiplie aussi par $${mult}$ sur la ligne du bas.`;
+
   return {
-    question: `Le prix de $${x}$ stylos est $${y}$ €. Le prix est proportionnel au nombre de stylos. Quel est le prix de $${xunk}$ stylos ?`,
-    correction: `**Coefficient :** $k = ${frac(y,x)} = ${k}$ €/stylo.\n\n**Prix de $${xunk}$ stylos :** $${xunk} \\times ${k} = ${xunk*k}$ €`
+    question: `Compléter le tableau de proportionnalité suivant :\n\n${tabQ}`,
+    correction:
+      `${sameRowLink}\n\n` +
+      `Donc :\n\n` +
+      tabCorr +
+      `$$${calcExpr2}$$`
   };
 };
 
@@ -2004,7 +2407,7 @@ G[74] = () => {
   const correction =
     `On simplifie la fraction $${frac(fracLabel.top, fracLabel.bot)}$ :\n\n` +
     `$$${frac(a, b)} = ${frac(`${sn} \\times ${g}`, `${sd} \\times ${g}`)} = ${frac(sn, sd)}$$\n\n` +
-    `Donc, le ratio de ${label1} et de ${label2} est $${sn} : ${sd}$.`;
+    `Donc, le ratio de ${label1} et de ${label2} est $${sn} : ${sd}$`;
 
   return { question, correction };
 };
