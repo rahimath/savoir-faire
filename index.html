@@ -1247,7 +1247,7 @@ G[44] = () => {
 
   return {
     question: `Le triangle $ABC$ tel que $AB = ${fmt(c)}\\,\\text{cm}$, $BC = ${fmt(a)}\\,\\text{cm}$ et $AC = ${fmt(b)}\\,\\text{cm}$  \nest-il constructible ?`,
-    correction: `Inégalité triangulaire : un triangle est constructible si et seulement si chaque côté est strictement inférieur à la somme des deux autres.\n\nOn vérifie que la somme des longueurs des deux plus petits côtés est supérieure à la longueur du plus grand côté :\n\n$$${fmt(sm1.len)} + ${fmt(sm2.len)} = ${fmt(sumSmall)} ${symbol} ${fmt(big.len)}$$\n\nDonc, le triangle $ABC$ ${ok ? 'est' : "n'est pas"} constructible.`
+    correction: `*Inégalité triangulaire :* un triangle est constructible si et seulement si chaque côté est strictement inférieur à la somme des deux autres.\n\nOn vérifie que la somme des longueurs des deux plus petits côtés est supérieure à la longueur du plus grand côté :\n\n$$${fmt(sm1.len)} + ${fmt(sm2.len)} = ${fmt(sumSmall)} ${symbol} ${fmt(big.len)}$$\n\nDonc, le triangle $ABC$ ${ok ? 'est' : "n'est pas"} constructible.`
   };
 };
 
@@ -1291,7 +1291,7 @@ G[47] = () => {
 
     return {
       question: `Dans un triangle $ABC$ rectangle en $${rightAngle.vertex}$, on a $${knownAngle.name} = ${v1}°$.\n\nQuelle est la mesure de l'angle $${missingAngle.name}$ ?`,
-      correction: `La somme des mesures des angles d'un triangle est égale à $180°$. Le triangle $ABC$ étant rectangle en $${rightAngle.vertex}$, l'angle $${rightAngle.name}$ mesure $90°$. Ainsi :\n\n${aligned}\n\nDonc, l'angle $${missingAngle.name}$ mesure $${vMissing}°$.`
+      correction: `La somme des mesures des angles d'un triangle est égale à $180°$. Le triangle $ABC$ étant rectangle en $${rightAngle.vertex}$, l'angle $${rightAngle.name}$ mesure $90°$.  \nAinsi :\n\n${aligned}\n\nDonc, l'angle $${missingAngle.name}$ mesure $${vMissing}°$.`
     };
   }
 
@@ -1311,7 +1311,7 @@ G[47] = () => {
 
   return {
     question: `Dans un triangle $ABC$, on a $${known[0].name} = ${v1}°$ et $${known[1].name} = ${v2}°$.\n\nQuelle est la mesure de l'angle $${missingAngle.name}$ ?`,
-    correction: `La somme des mesures des angles d'un triangle est égale à $180°$. Ainsi :\n\n${aligned}\n\nDonc, l'angle $${missingAngle.name}$ mesure $${v3}°$.`
+    correction: `La somme des mesures des angles d'un triangle est égale à $180°$.  \nAinsi :\n\n${aligned}\n\nDonc, l'angle $${missingAngle.name}$ mesure $${v3}°$.`
   };
 };
 
@@ -2180,10 +2180,8 @@ G[72] = () => {
 };
 
 G[73] = () => {
-  const type = pick([1, 1, 2]); // type 1 plus fréquent
   const fmtNum = x => Number.isInteger(x) ? `${x}` : `${x.toFixed(1).replace('.', '{,}')}`;
   const isClean1 = x => Math.abs(x * 10 - Math.round(x * 10)) < 1e-9;
-  const RED = s => `<span style="color:#c0392b;font-weight:600;">${s}</span>`;
 
   const cell = s => `<td style="border:1.5px solid #b8b0a4; padding:6px 18px; text-align:center; font-family:'Lora',serif; min-width:60px;">${s}</td>`;
   const cellRed = s => `<td style="border:1.5px solid #b8b0a4; padding:6px 18px; text-align:center; font-family:'Lora',serif; min-width:60px; color:#c0392b; font-weight:600;">${s}</td>`;
@@ -2194,6 +2192,8 @@ G[73] = () => {
   <tr>${r2c1}${r2c2}</tr>
 </table>
 </div>`;
+
+  const type = Math.random() < 0.75 ? 1 : 2;
 
   // ── TYPE 1 ──────────────────────────────────────────────────────────────
   if (type === 1) {
@@ -2214,7 +2214,7 @@ G[73] = () => {
         const cands = [];
         for (let t = 2; t <= 100; t++) {
           const bot = k * t;
-          if (isClean1(bot) && bot >= 1 && bot <= 200) cands.push(t);
+          if (isClean1(bot) && bot >= 2 && bot <= 200) cands.push(t);
         }
         if (cands.length < 2) continue;
         const shuffled = shuffle(cands);
@@ -2230,72 +2230,47 @@ G[73] = () => {
 
       if (!isClean1(c) || !isClean1(d)) continue;
       if (c > 200 || d > 200) continue;
-      if (c <= 0 || d <= 0) continue;
+      if (c < 2 || d < 2 || a < 2 || b < 2) continue;
       if (Math.abs(c / a - k) > 1e-9) continue;
+
+      // Vérifier qu'il n'y a pas de lien multiplicatif entier entre colonnes
+      // (sinon ça devrait être type 2)
+      const ratAB = b / a;
+      const ratCD = d / c;
+      if (Number.isInteger(ratAB) && ratAB >= 2 && ratAB <= 12 && Math.abs(ratAB - ratCD) < 1e-9) continue;
+      if (Number.isInteger(a / b) && a / b >= 2 && a / b <= 12 && Math.abs((a/b) - (c/d)) < 1e-9) continue;
 
       break;
     } while (attempts < 3000);
 
-    // Cellule manquante : 0=a, 1=b, 2=c, 3=d
     const missingIdx = pick([0, 1, 2, 3]);
-    const vals = [a, b, c, d];
-    const missing = vals[missingIdx];
 
-    // Colonne remplie = l'autre colonne
-    let knownTop, knownBot, missingTop, missingBot, isTopMissing, calcExpr;
+    let tabQ;
+    if (missingIdx === 0)      tabQ = makeTab(cell(`$\\ldots$`), cell(`$${fmtNum(b)}$`), cell(`$${fmtNum(c)}$`), cell(`$${fmtNum(d)}$`));
+    else if (missingIdx === 1) tabQ = makeTab(cell(`$${fmtNum(a)}$`), cell(`$\\ldots$`), cell(`$${fmtNum(c)}$`), cell(`$${fmtNum(d)}$`));
+    else if (missingIdx === 2) tabQ = makeTab(cell(`$${fmtNum(a)}$`), cell(`$${fmtNum(b)}$`), cell(`$\\ldots$`), cell(`$${fmtNum(d)}$`));
+    else                       tabQ = makeTab(cell(`$${fmtNum(a)}$`), cell(`$${fmtNum(b)}$`), cell(`$${fmtNum(c)}$`), cell(`$\\ldots$`));
 
-    if (missingIdx === 0) {
-      // a manque → colonne 1 incomplète, colonne 2 remplie
-      knownTop = b; knownBot = d;
-      missingTop = '\\ldots'; missingBot = fmtNum(c);
-      isTopMissing = true;
-      calcExpr = `${fmtNum(c)} \\div ${fmtNum(k)} = ${fmtNum(a)}`;
-    } else if (missingIdx === 1) {
-      // b manque → colonne 2 incomplète, colonne 1 remplie
-      knownTop = a; knownBot = c;
-      missingTop = '\\ldots'; missingBot = fmtNum(d);
-      isTopMissing = true;
-      calcExpr = `${fmtNum(d)} \\div ${fmtNum(k)} = ${fmtNum(b)}`;
-    } else if (missingIdx === 2) {
-      // c manque → colonne 1 incomplète, colonne 2 remplie
-      knownTop = b; knownBot = d;
-      missingTop = fmtNum(a); missingBot = '\\ldots';
-      isTopMissing = false;
-      calcExpr = `${fmtNum(a)} \\times ${fmtNum(k)} = ${fmtNum(c)}`;
-    } else {
-      // d manque → colonne 2 incomplète, colonne 1 remplie
-      knownTop = a; knownBot = c;
-      missingTop = fmtNum(b); missingBot = '\\ldots';
-      isTopMissing = false;
-      calcExpr = `${fmtNum(b)} \\times ${fmtNum(k)} = ${fmtNum(d)}`;
-    }
-
-    // Tableau question
-    const tabQ = missingIdx === 0 || missingIdx === 2
-      ? makeTab(cell(`$${missingTop}$`), cell(`$${fmtNum(knownTop)}$`), cell(`$${missingBot}$`), cell(`$${fmtNum(knownBot)}$`))
-      : makeTab(cell(`$${fmtNum(knownTop)}$`), cell(`$${missingTop}$`), cell(`$${fmtNum(knownBot)}$`), cell(`$${missingBot}$`));
-
-    // Correction : coeff de prop depuis la colonne connue
-    let coeffCalc;
+    // Coefficient calculé depuis la colonne entièrement connue
+    let coeffCalc, calcExpr;
     if (missingIdx === 0 || missingIdx === 2) {
-      // colonne 2 remplie
+      // colonne 2 remplie (b et d)
       coeffCalc = `$$${fmtNum(d)} \\div ${fmtNum(b)} = ${fmtNum(k)}$$`;
     } else {
-      // colonne 1 remplie
+      // colonne 1 remplie (a et c)
       coeffCalc = `$$${fmtNum(c)} \\div ${fmtNum(a)} = ${fmtNum(k)}$$`;
     }
 
-    // Tableau correction avec réponse en rouge
+    if (missingIdx === 0)      calcExpr = `${fmtNum(c)} \\div ${fmtNum(k)} = ${fmtNum(a)}`;
+    else if (missingIdx === 1) calcExpr = `${fmtNum(d)} \\div ${fmtNum(k)} = ${fmtNum(b)}`;
+    else if (missingIdx === 2) calcExpr = `${fmtNum(a)} \\times ${fmtNum(k)} = ${fmtNum(c)}`;
+    else                       calcExpr = `${fmtNum(b)} \\times ${fmtNum(k)} = ${fmtNum(d)}`;
+
     let tabCorr;
-    if (missingIdx === 0) {
-      tabCorr = makeTab(cellRed(`$${fmtNum(a)}$`), cell(`$${fmtNum(b)}$`), cell(`$${fmtNum(c)}$`), cell(`$${fmtNum(d)}$`));
-    } else if (missingIdx === 1) {
-      tabCorr = makeTab(cell(`$${fmtNum(a)}$`), cellRed(`$${fmtNum(b)}$`), cell(`$${fmtNum(c)}$`), cell(`$${fmtNum(d)}$`));
-    } else if (missingIdx === 2) {
-      tabCorr = makeTab(cell(`$${fmtNum(a)}$`), cell(`$${fmtNum(b)}$`), cellRed(`$${fmtNum(c)}$`), cell(`$${fmtNum(d)}$`));
-    } else {
-      tabCorr = makeTab(cell(`$${fmtNum(a)}$`), cell(`$${fmtNum(b)}$`), cell(`$${fmtNum(c)}$`), cellRed(`$${fmtNum(d)}$`));
-    }
+    if (missingIdx === 0)      tabCorr = makeTab(cellRed(`$${fmtNum(a)}$`), cell(`$${fmtNum(b)}$`), cell(`$${fmtNum(c)}$`), cell(`$${fmtNum(d)}$`));
+    else if (missingIdx === 1) tabCorr = makeTab(cell(`$${fmtNum(a)}$`), cellRed(`$${fmtNum(b)}$`), cell(`$${fmtNum(c)}$`), cell(`$${fmtNum(d)}$`));
+    else if (missingIdx === 2) tabCorr = makeTab(cell(`$${fmtNum(a)}$`), cell(`$${fmtNum(b)}$`), cellRed(`$${fmtNum(c)}$`), cell(`$${fmtNum(d)}$`));
+    else                       tabCorr = makeTab(cell(`$${fmtNum(a)}$`), cell(`$${fmtNum(b)}$`), cell(`$${fmtNum(c)}$`), cellRed(`$${fmtNum(d)}$`));
 
     return {
       question: `Compléter le tableau de proportionnalité suivant :\n\n${tabQ}`,
@@ -2308,60 +2283,63 @@ G[73] = () => {
     };
   }
 
-  // ── TYPE 2 : lien multiplicatif entre colonnes ───────────────────────────
-  let a, b, c, d, mult;
+  // ── TYPE 2 : lien multiplicatif dans les tables jusqu'à 12 ──────────────
+  let a, b, c, d, mult, k2;
   let attempts = 0;
 
   do {
     attempts++;
-    a = rand(2, 30);
-    mult = rand(2, 8);
+    // mult : facteur entre colonnes (dans tables jusqu'à 12)
+    mult = rand(2, 12);
+    // k2 : coeff entre lignes (dans tables jusqu'à 12)
+    k2 = rand(2, 12);
+    a = rand(2, 12);
     b = a * mult;
-    const k2 = pick([2, 3, 4, 5]);
     c = a * k2;
     d = b * k2;
-    if (a === b || c === d || a === c || b === d) continue;
-    if (d > 300) continue;
+    if (a === b || a === c || b === d || c === d) continue;
+    if (b > 144 || c > 144 || d > 144) continue;
+    // Toutes valeurs >= 2
+    if (Math.min(a, b, c, d) < 2) continue;
     break;
   } while (attempts < 1000);
 
   const missingIdx = pick([0, 1, 2, 3]);
 
-  let tabQ;
+  let tabQ2;
+  if (missingIdx === 0)      tabQ2 = makeTab(cell(`$\\ldots$`), cell(`$${b}$`), cell(`$${c}$`), cell(`$${d}$`));
+  else if (missingIdx === 1) tabQ2 = makeTab(cell(`$${a}$`), cell(`$\\ldots$`), cell(`$${c}$`), cell(`$${d}$`));
+  else if (missingIdx === 2) tabQ2 = makeTab(cell(`$${a}$`), cell(`$${b}$`), cell(`$\\ldots$`), cell(`$${d}$`));
+  else                       tabQ2 = makeTab(cell(`$${a}$`), cell(`$${b}$`), cell(`$${c}$`), cell(`$\\ldots$`));
+
+  let tabCorr2;
+  if (missingIdx === 0)      tabCorr2 = makeTab(cellRed(`$${a}$`), cell(`$${b}$`), cell(`$${c}$`), cell(`$${d}$`));
+  else if (missingIdx === 1) tabCorr2 = makeTab(cell(`$${a}$`), cellRed(`$${b}$`), cell(`$${c}$`), cell(`$${d}$`));
+  else if (missingIdx === 2) tabCorr2 = makeTab(cell(`$${a}$`), cell(`$${b}$`), cellRed(`$${c}$`), cell(`$${d}$`));
+  else                       tabCorr2 = makeTab(cell(`$${a}$`), cell(`$${b}$`), cell(`$${c}$`), cellRed(`$${d}$`));
+
+  // Explication selon la cellule manquante
+  let linkExpl, calcExpr2;
   if (missingIdx === 0) {
-    tabQ = makeTab(cell(`$\\ldots$`), cell(`$${b}$`), cell(`$${c}$`), cell(`$${d}$`));
+    linkExpl = `On remarque que $${c} \\times ${mult} = ${d}$, donc on divise aussi par $${mult}$ sur la ligne du haut.`;
+    calcExpr2 = `${b} \\div ${mult} = ${a}`;
   } else if (missingIdx === 1) {
-    tabQ = makeTab(cell(`$${a}$`), cell(`$\\ldots$`), cell(`$${c}$`), cell(`$${d}$`));
+    linkExpl = `On remarque que $${c} \\times ${mult} = ${d}$, donc on multiplie aussi par $${mult}$ sur la ligne du haut.`;
+    calcExpr2 = `${a} \\times ${mult} = ${b}`;
   } else if (missingIdx === 2) {
-    tabQ = makeTab(cell(`$${a}$`), cell(`$${b}$`), cell(`$\\ldots$`), cell(`$${d}$`));
+    linkExpl = `On remarque que $${a} \\times ${mult} = ${b}$, donc on divise aussi par $${mult}$ sur la ligne du bas.`;
+    calcExpr2 = `${d} \\div ${mult} = ${c}`;
   } else {
-    tabQ = makeTab(cell(`$${a}$`), cell(`$${b}$`), cell(`$${c}$`), cell(`$\\ldots$`));
+    linkExpl = `On remarque que $${a} \\times ${mult} = ${b}$, donc on multiplie aussi par $${mult}$ sur la ligne du bas.`;
+    calcExpr2 = `${c} \\times ${mult} = ${d}`;
   }
 
-  let tabCorr;
-  if (missingIdx === 0) tabCorr = makeTab(cellRed(`$${a}$`), cell(`$${b}$`), cell(`$${c}$`), cell(`$${d}$`));
-  else if (missingIdx === 1) tabCorr = makeTab(cell(`$${a}$`), cellRed(`$${b}$`), cell(`$${c}$`), cell(`$${d}$`));
-  else if (missingIdx === 2) tabCorr = makeTab(cell(`$${a}$`), cell(`$${b}$`), cellRed(`$${c}$`), cell(`$${d}$`));
-  else tabCorr = makeTab(cell(`$${a}$`), cell(`$${b}$`), cell(`$${c}$`), cellRed(`$${d}$`));
-
-  // Explication du lien multiplicatif
-  let calcExpr2;
-  if (missingIdx === 0) calcExpr2 = `${d} \\div ${mult} = ${a}`;
-  else if (missingIdx === 1) calcExpr2 = `${a} \\times ${mult} = ${b}`;
-  else if (missingIdx === 2) calcExpr2 = `${d} \\div ${mult} = ${c}`;
-  else calcExpr2 = `${c} \\times ${mult} = ${d}`;
-
-  // Ligne du haut ou du bas connue ?
-  const sameRowLink = missingIdx <= 1
-    ? `On remarque que $${c} \\times ${mult} = ${d}$, donc on multiplie aussi par $${mult}$ sur la ligne du haut.`
-    : `On remarque que $${a} \\times ${mult} = ${b}$, donc on multiplie aussi par $${mult}$ sur la ligne du bas.`;
-
   return {
-    question: `Compléter le tableau de proportionnalité suivant :\n\n${tabQ}`,
+    question: `Compléter le tableau de proportionnalité suivant :\n\n${tabQ2}`,
     correction:
-      `${sameRowLink}\n\n` +
+      `${linkExpl}\n\n` +
       `Donc :\n\n` +
-      tabCorr +
+      tabCorr2 +
       `$$${calcExpr2}$$`
   };
 };
