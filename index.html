@@ -783,12 +783,66 @@ G[21] = () => {
 };
 
 G[22] = () => {
-  const vals = shuffle([-5,-4,-3,-2,-1,0,1,2,3,4,5]).slice(0,4);
+  // x entre -7 et 7, entier ou ,5, pas 0
+  const candidates = [];
+  for (let v = -14; v <= 14; v++) {
+    if (v !== 0) candidates.push(v / 2);
+  }
+  const x = pick(candidates);
+
+  const margin = 0;
+  const W = 400; // largeur fixe
+  const totalUnits = 15; // de -7.5 à 7.5
+  const cellW = (W - margin * 2) / totalUnits;
+  const H = 60;
+  const mid = H / 2;
+
+  const px = val => margin + (val + 7.5) * cellW;
+
+  const makeAxis = (withPoint) => {
+    let svg = '';
+
+    // Ligne principale
+    svg += `<line x1="${px(-7.5)}" y1="${mid}" x2="${px(7.5)}" y2="${mid}" stroke="#1a1714" stroke-width="1"/>`;
+
+    // Flèche droite
+    svg += `<polygon points="${px(7.5)},${mid} ${px(7.5) - 6},${mid - 3} ${px(7.5) - 6},${mid + 3}" fill="#1a1714"/>`;
+
+    // Graduations
+    for (let i = -7; i <= 7; i++) {
+      // Graduation entière
+      svg += `<line x1="${px(i)}" y1="${mid - 4}" x2="${px(i)}" y2="${mid + 4}" stroke="#1a1714" stroke-width="1"/>`;
+      // Graduation demi
+      if (i < 7) {
+        svg += `<line x1="${px(i + 0.5)}" y1="${mid - 2.5}" x2="${px(i + 0.5)}" y2="${mid + 2.5}" stroke="#1a1714" stroke-width="0.6"/>`;
+      }
+      if ((i === 0 || i === 1) && !(withPoint && (x === i))) {
+        svg += `<text x="${px(i)}" y="${mid + 18}" text-anchor="middle" font-family="Lora,serif" font-size="11" fill="#1a1714">${i}</text>`;
+      }
+    }
+
+    if (withPoint) {
+      const ptX = px(x);
+      svg += `<line x1="${ptX}" y1="${mid - 6}" x2="${ptX}" y2="${mid + 6}" stroke="#c0392b" stroke-width="1.5"/>`;
+      svg += `<text x="${ptX}" y="${mid - 12}" text-anchor="middle" font-family="Lora,serif" font-size="12" font-weight="600" fill="#c0392b">A</text>`;
+      svg += `<text x="${ptX}" y="${mid + 18}" text-anchor="middle" font-family="Lora,serif" font-size="11" font-weight="600" fill="#c0392b">${xStrSVG}</text>`;
+    }
+
+    return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%; display:block; margin:0px auto;">
+    ${svg}
+  </svg>`;
+  };
+
+  const xStr = Number.isInteger(x) ? `${x}` : `${x}`.replace('.', '{,}');
+  const xStrSVG = Number.isInteger(x) ? `${x}` : `${x}`.replace('.', ',');
+
+  const intro = x < 0
+    ? `L'abscisse est négative, donc le point se situe à gauche de l'origine :`
+    : `L'abscisse est positive, donc le point se situe à droite de l'origine :`;
+
   return {
-    // question: `Sur une droite graduée (de $-6$ à $6$, unité 1 cm), place les nombres : $${vals.join('$, $')}$.`,
-    // correction: `On place chaque nombre à sa position sur la droite :\n\n${vals.map(v=>`- $${v}$ : à ${v===0?'l\'origine':Math.abs(v)+' graduation'+(Math.abs(v)>1?'s':'')+' vers la '+(v>0?'droite':'gauche')}`).join('\n')}\n\n*Les négatifs sont à gauche de $0$, les positifs à droite.*`
-    question: `En cours de construction ...`,
-    correction: ``
+    question: `Placer le point $A$ d'abscisse $${xStr}$ sur la droite graduée ci-dessous :\n\n${makeAxis(false)}`,
+    correction: `${intro}\n\n${makeAxis(true)}`
   };
 };
 
@@ -830,66 +884,62 @@ G[23] = () => {
 G[24] = () => {
   const x = rand(-6, 6);
   const y = rand(-5, 5);
-
-  const margin = 36;
-  const cellW = 28;
-  const cellH = 28;
+  const margin = 24;
+  const cellW = 20;
+  const cellH = 20;
   const cols = 13;
   const rows = 11;
   const W = margin * 2 + cellW * (cols - 1);
   const H = margin * 2 + cellH * (rows - 1);
-
   const px = xVal => margin + (xVal + 6) * cellW;
   const py = yVal => margin + (5 - yVal) * cellH;
-
   const ox = px(0), oy = py(0);
 
   let gridLines = '';
   for (let i = -6; i <= 6; i++) {
-    gridLines += `<line x1="${px(i)}" y1="${margin}" x2="${px(i)}" y2="${H - margin}" stroke="#ddd8cf" stroke-width="1"/>`;
+    gridLines += `<line x1="${px(i)}" y1="${margin}" x2="${px(i)}" y2="${H - margin}" stroke="#ddd8cf" stroke-width="0.8"/>`;
   }
   for (let j = -5; j <= 5; j++) {
-    gridLines += `<line x1="${margin}" y1="${py(j)}" x2="${W - margin}" y2="${py(j)}" stroke="#ddd8cf" stroke-width="1"/>`;
+    gridLines += `<line x1="${margin}" y1="${py(j)}" x2="${W - margin}" y2="${py(j)}" stroke="#ddd8cf" stroke-width="0.8"/>`;
   }
 
   const axes = `
-    <line x1="${margin}" y1="${oy}" x2="${W - margin}" y2="${oy}" stroke="#1a1714" stroke-width="1.5"/>
-    <line x1="${ox}" y1="${margin}" x2="${ox}" y2="${H - margin}" stroke="#1a1714" stroke-width="1.5"/>
-    <polygon points="${W - margin},${oy} ${W - margin - 8},${oy - 4} ${W - margin - 8},${oy + 4}" fill="#1a1714"/>
-    <polygon points="${ox},${margin} ${ox - 4},${margin + 8} ${ox + 4},${margin + 8}" fill="#1a1714"/>
+    <line x1="${margin}" y1="${oy}" x2="${W - margin}" y2="${oy}" stroke="#1a1714" stroke-width="1"/>
+    <line x1="${ox}" y1="${margin}" x2="${ox}" y2="${H - margin}" stroke="#1a1714" stroke-width="1"/>
+    <polygon points="${W - margin},${oy} ${W - margin - 6},${oy - 3} ${W - margin - 6},${oy + 3}" fill="#1a1714"/>
+    <polygon points="${ox},${margin} ${ox - 3},${margin + 6} ${ox + 3},${margin + 6}" fill="#1a1714"/>
   `;
 
+  // Ticks plus courts (3px de chaque côté au lieu de 5)
   let ticksX = '';
   for (let i = -6; i <= 5; i++) {
-    if (i === 6) continue;
-    ticksX += `<line x1="${px(i)}" y1="${oy - 5}" x2="${px(i)}" y2="${oy + 5}" stroke="#1a1714" stroke-width="1.5"/>`;
+    ticksX += `<line x1="${px(i)}" y1="${oy - 3}" x2="${px(i)}" y2="${oy + 3}" stroke="#1a1714" stroke-width="1"/>`;
   }
-  ticksX += `<text x="${px(1)}" y="${oy + 20}" text-anchor="middle" font-family="Lora,serif" font-size="12" fill="#1a1714">1</text>`;
+  ticksX += `<text x="${px(1)}" y="${oy + 15}" text-anchor="middle" font-family="Lora,serif" font-size="10" fill="#1a1714">1</text>`;
 
   let ticksY = '';
   for (let j = -5; j <= 4; j++) {
-    if (j === 5) continue;
-    ticksY += `<line x1="${ox - 5}" y1="${py(j)}" x2="${ox + 5}" y2="${py(j)}" stroke="#1a1714" stroke-width="1.5"/>`;
+    ticksY += `<line x1="${ox - 3}" y1="${py(j)}" x2="${ox + 3}" y2="${py(j)}" stroke="#1a1714" stroke-width="1"/>`;
   }
-  ticksY += `<text x="${ox - 14}" y="${py(1) + 5}" text-anchor="middle" font-family="Lora,serif" font-size="12" fill="#1a1714">1</text>`;
+  ticksY += `<text x="${ox - 10}" y="${py(1) + 4}" text-anchor="middle" font-family="Lora,serif" font-size="10" fill="#1a1714">1</text>`;
 
-  const labelO = `<text x="${ox - 14}" y="${oy + 18}" font-family="Lora,serif" font-size="12" fill="#1a1714">0</text>`;
+  const labelO = `<text x="${ox - 10}" y="${oy + 12}" font-family="Lora,serif" font-size="10" fill="#1a1714">0</text>`;
 
   const labelAxes = `
-    <text x="${W - margin + 10}" y="${oy + 5}" font-family="Lora,serif" font-size="12" fill="#1a1714" font-style="italic">x</text>
-    <text x="${ox + 10}" y="${margin + 5}" font-family="Lora,serif" font-size="12" fill="#1a1714" font-style="italic">y</text>
+    <text x="${W - margin + 5}" y="${oy + 3}" font-family="Lora,serif" font-size="10" fill="#1a1714" font-style="italic">x</text>
+    <text x="${ox + 8}" y="${margin + 7}" font-family="Lora,serif" font-size="10" fill="#1a1714" font-style="italic">y</text>
   `;
 
   const ptX = px(x), ptY = py(y);
-  const labelOffX = x >= 4 ? -20 : 10;
-  const labelOffY = y >= 4 ? 20 : -10;
+  const labelOffX = x >= 4 ? -12 : 4;
+  const labelOffY = y >= 4 ? 13 : -3;
 
   const point = `
-    <circle cx="${ptX}" cy="${ptY}" r="3" fill="#c0392b"/>
-    <text x="${ptX + labelOffX}" y="${ptY + labelOffY}" font-family="Lora,serif" font-size="15" font-weight="600" fill="#c0392b">A</text>
+    <circle cx="${ptX}" cy="${ptY}" r="2" fill="#c0392b"/>
+    <text x="${ptX + labelOffX}" y="${ptY + labelOffY}" font-family="Lora,serif" font-size="11" font-weight="600" fill="#c0392b">A</text>
   `;
 
-  const svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="max-width:100%; display:block; margin:16px auto;">
+  const svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="max-width:100%; display:block; margin:-20px auto -20px;">
     ${gridLines}
     ${axes}
     ${ticksX}
@@ -906,13 +956,103 @@ G[24] = () => {
 };
 
 G[25] = () => {
-  const pts = ['A','B','C'];
-  const coords = pts.map(()=>[rand(-4,4),rand(-4,4)]);
+  const x = rand(-6, 6);
+  const y = rand(-5, 5);
+  const margin = 24;
+  const cellW = 20;
+  const cellH = 20;
+  const cols = 13;
+  const rows = 11;
+  const W = margin * 2 + cellW * (cols - 1);
+  const H = margin * 2 + cellH * (rows - 1);
+  const px = xVal => margin + (xVal + 6) * cellW;
+  const py = yVal => margin + (5 - yVal) * cellH;
+  const ox = px(0), oy = py(0);
+
+  const makeGrid = () => {
+    let gridLines = '';
+    for (let i = -6; i <= 6; i++) {
+      gridLines += `<line x1="${px(i)}" y1="${margin}" x2="${px(i)}" y2="${H - margin}" stroke="#ddd8cf" stroke-width="0.8"/>`;
+    }
+    for (let j = -5; j <= 5; j++) {
+      gridLines += `<line x1="${margin}" y1="${py(j)}" x2="${W - margin}" y2="${py(j)}" stroke="#ddd8cf" stroke-width="0.8"/>`;
+    }
+    return gridLines;
+  };
+
+  const axes = `
+    <line x1="${margin}" y1="${oy}" x2="${W - margin}" y2="${oy}" stroke="#1a1714" stroke-width="1"/>
+    <line x1="${ox}" y1="${margin}" x2="${ox}" y2="${H - margin}" stroke="#1a1714" stroke-width="1"/>
+    <polygon points="${W - margin},${oy} ${W - margin - 6},${oy - 3} ${W - margin - 6},${oy + 3}" fill="#1a1714"/>
+    <polygon points="${ox},${margin} ${ox - 3},${margin + 6} ${ox + 3},${margin + 6}" fill="#1a1714"/>
+  `;
+
+  const makeTicksX = () => {
+    let t = '';
+    for (let i = -6; i <= 5; i++) {
+      t += `<line x1="${px(i)}" y1="${oy - 3}" x2="${px(i)}" y2="${oy + 3}" stroke="#1a1714" stroke-width="1"/>`;
+    }
+    t += `<text x="${px(1)}" y="${oy + 15}" text-anchor="middle" font-family="Lora,serif" font-size="10" fill="#1a1714">1</text>`;
+    return t;
+  };
+
+  const makeTicksY = () => {
+    let t = '';
+    for (let j = -5; j <= 4; j++) {
+      t += `<line x1="${ox - 3}" y1="${py(j)}" x2="${ox + 3}" y2="${py(j)}" stroke="#1a1714" stroke-width="1"/>`;
+    }
+    t += `<text x="${ox - 10}" y="${py(1) + 4}" text-anchor="middle" font-family="Lora,serif" font-size="10" fill="#1a1714">1</text>`;
+    return t;
+  };
+
+  const labelO = `<text x="${ox - 10}" y="${oy + 12}" font-family="Lora,serif" font-size="10" fill="#1a1714">0</text>`;
+
+  const labelAxes = `
+    <text x="${W - margin + 5}" y="${oy + 3}" font-family="Lora,serif" font-size="10" fill="#1a1714" font-style="italic">x</text>
+    <text x="${ox + 8}" y="${margin + 7}" font-family="Lora,serif" font-size="10" fill="#1a1714" font-style="italic">y</text>
+  `;
+
+  const ptX = px(x), ptY = py(y);
+  const labelOffX = x >= 4 ? -12 : 4;
+  const labelOffY = y >= 4 ? 13 : -3;
+
+  const point = `
+    <circle cx="${ptX}" cy="${ptY}" r="2" fill="#c0392b"/>
+    <text x="${ptX + labelOffX}" y="${ptY + labelOffY}" font-family="Lora,serif" font-size="11" font-weight="600" fill="#c0392b">A</text>
+  `;
+
+  // Lignes pointillées vertes
+  const green = '#27694a';
+  const dottedLines = `
+    <!-- ligne verticale du point vers l'axe des abscisses -->
+    <line x1="${ptX}" y1="${ptY}" x2="${ptX}" y2="${oy}"
+      stroke="${green}" stroke-width="1" stroke-dasharray="3,2"/>
+    ${x !== 0 ? `<text x="${ptX}" y="${y < 0 ? oy - 5 : oy + 15}" text-anchor="middle"
+      font-family="Lora,serif" font-size="10" font-weight="600" fill="${green}">${x}</text>` : ''}
+    <!-- ligne horizontale du point vers l'axe des ordonnées -->
+    <line x1="${ptX}" y1="${ptY}" x2="${ox}" y2="${ptY}"
+      stroke="${green}" stroke-width="1" stroke-dasharray="3,2"/>
+    ${y !== 0 ? `<text x="${x < 0 ? ox + 5 : ox - 10}" y="${ptY + 4}" text-anchor="${x < 0 ? 'start' : 'middle'}"
+      font-family="Lora,serif" font-size="10" font-weight="600" fill="${green}">${y}</text>` : ''}
+  `;
+
+  const svgBase = (withPoint) => `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="max-width:100%; display:block; margin:-20px auto -20px;">
+    ${makeGrid()}
+    ${axes}
+    ${makeTicksX()}
+    ${makeTicksY()}
+    ${labelO}
+    ${labelAxes}
+    ${withPoint ? dottedLines + point : ''}
+  </svg>`;
+
+  const xStr = x < 0 ? `${x}` : `${x}`;
+  const yStr = y < 0 ? `${y}` : `${y}`;
+
   return {
-    // question: `Place les points suivants dans un repère $(O;I;J)$ : ${pts.map((p,i)=>`$${p}(${coords[i][0]}\\,;\\,${coords[i][1]})$`).join(', ')}.`,
-    // correction: `Pour placer un point $M(x\\,;\\,y)$ :\n- On part de $O$\n- On avance de $x$ unités sur l'axe horizontal ($x>0$ : droite, $x<0$ : gauche)\n- On avance de $y$ unités sur l'axe vertical ($y>0$ : haut, $y<0$ : bas)\n\n${pts.map((p,i)=>`**$${p}(${coords[i][0]}\\,;\\,${coords[i][1]})$** : ${coords[i][0]>=0?'droite':'gauche'} de $${Math.abs(coords[i][0])}$, ${coords[i][1]>=0?'haut':'bas'} de $${Math.abs(coords[i][1])}$`).join('\n')}`
-    question: `En cours de construction ...`,
-    correction: ``
+    question: `Placer le point $A$ de coordonnées $(${xStr}\\,;\\,${yStr})$ dans le repère ci-dessous :\n\n${svgBase(false)}`,
+    correction:
+      `L'abscisse de $A$ est $${xStr}$ (position sur l'axe horizontal) et l'ordonnée de $A$ est $${yStr}$ (position sur l'axe vertical) :\n\n${svgBase(true)}`
   };
 };
 
@@ -1420,7 +1560,7 @@ G[52] = () => {
 
   return {
     question: `Comparer :\n\n$$${frac(f1n, f1d)} \\quad\\text{et}\\quad ${frac(f2n, f2d)}$$`,
-    correction: `${corrText}\n\n$$${frac(f1n, f1d)} ${symbol} ${frac(f2n, f2d)}$$`
+    correction: `${corrText}\n\nDonc :\n\n$$${frac(f1n, f1d)} ${symbol} ${frac(f2n, f2d)}$$`
   };
 };
 
@@ -2289,18 +2429,21 @@ G[73] = () => {
 
   do {
     attempts++;
-    // mult : facteur entre colonnes (dans tables jusqu'à 12)
-    mult = rand(2, 12);
-    // k2 : coeff entre lignes (dans tables jusqu'à 12)
-    k2 = rand(2, 12);
+    mult = rand(2, 12);   // lien colonne à colonne
+    k2   = rand(2, 12);   // lien ligne à ligne
+    if (mult === k2) continue; // éviter confusion
     a = rand(2, 12);
     b = a * mult;
     c = a * k2;
-    d = b * k2;
-    if (a === b || a === c || b === d || c === d) continue;
-    if (b > 144 || c > 144 || d > 144) continue;
-    // Toutes valeurs >= 2
+    d = b * k2;   // = a * mult * k2
+    // Toutes les valeurs doivent être ≤ 144 (dans les tables jusqu'à 12×12)
+    if (Math.max(a, b, c, d) > 144) continue;
     if (Math.min(a, b, c, d) < 2) continue;
+    if (a === b || a === c || b === d || c === d) continue;
+    // Le coeff de proportionnalité k2 ne doit pas être trop "évident"
+    // par rapport au lien colonne : on veut que mult soit plus simple à voir
+    // Donc on s'assure que mult < k2 (le lien colonne est plus petit)
+    if (mult >= k2) continue;
     break;
   } while (attempts < 1000);
 
@@ -2732,33 +2875,149 @@ G[83] = () => {
 
 // ── SÉQUENCE 9 : Calcul littéral ──────────────────────────────────────────────
 G[91] = () => {
-  const letter=pick(['x','n','a','b','y']);
-  const litPool=[
-    `${rand(1,9)} \\times ${letter} + ${rand(1,12)}`,
-    `${rand(1,9)} \\times ${letter} - ${rand(1,12)}`,
-    `${letter} + ${rand(1,9)}`,
-    `${rand(2,5)} \\times ${letter}`,
-    `${rand(2,9)} \\times (${letter} + ${rand(1,5)})`,
-  ];
-  const numPool=[
-    `${rand(2,9)} + ${rand(1,9)} \\times ${rand(2,7)}`,
-    `${rand(10,99)} \\div ${pick([2,3,4,5])}`,
-    `(${rand(2,9)} + ${rand(1,6)}) \\times ${rand(2,8)}`,
-    `${rand(10,99)}`,
-    `${rand(2,9)} \\times ${rand(2,9)}`,
-  ];
-  const nbLit=pick([2,3]);
-  const chosen=shuffle([
-    ...shuffle(litPool).slice(0,nbLit).map(e=>({e,lit:true})),
-    ...shuffle(numPool).slice(0,5-nbLit).map(e=>({e,lit:false}))
-  ]);
-  const labels=['A','B','C','D','E'];
-  const lines=chosen.map((c,i)=>`- $${labels[i]} = ${c.e}$`).join('\n');
-  const litIdx=chosen.map((c,i)=>c.lit?labels[i]:null).filter(Boolean);
-  const numIdx=chosen.map((c,i)=>!c.lit?labels[i]:null).filter(Boolean);
+  const isLiteral = Math.random() < 0.5;
+
+  const rn = () => Math.random() < 0.90 ? rand(1, 9) : rand(10, 99);
+  const letters = ['a', 'b', 'c', 'j', 'k', 'm', 'n', 'p', 'q', 'r', 's', 't', 'x', 'y', 'z'];
+  const pickLetter = () => pick(letters);
+
+  const RED   = (s, l) => `\\textcolor{#c0392b}{${s}}`;
+  const BLUE  = (s, l) => `\\textcolor{#2a6496}{${s}}`;
+  const GREEN = (s, l) => `\\textcolor{#27694a}{${s}}`;
+  const colorFns = [RED, BLUE, GREEN];
+
+  // Colorie les lettres dans une expression LaTeX
+  // en évitant de toucher aux commandes LaTeX (\dfrac, \textcolor, etc.)
+  const colorLetters = (expr, usedLetters) => {
+    // On construit un regex qui matche soit une commande LaTeX (\...) soit une lettre cible
+    const targets = usedLetters.map(l => l).join('');
+    const regex = new RegExp(`(\\\\[a-zA-Z]+)|([${targets}])`, 'g');
+    return expr.replace(regex, (match, cmd, letter) => {
+      if (cmd) return cmd; // commande LaTeX → ne pas toucher
+      const idx = usedLetters.indexOf(letter);
+      if (idx === -1) return letter;
+      return colorFns[idx](letter);
+    });
+  };
+
+  // ── EXPRESSIONS NUMÉRIQUES ───────────────────────────────────────────────
+  const numExprPool = () => {
+    const a = rn(), b = rn(), c = rn(), d = rn();
+    return pick([
+      `${a} + ${b}`,
+      `${a} - ${b}`,
+      `${a} \\times ${b}`,
+      `${a} \\div ${b}`,
+      `${a} + ${b} \\times ${c}`,
+      `${a} \\times ${b} - ${c}`,
+      `(${a} + ${b}) \\times ${c}`,
+      `(${a} - ${b}) \\times ${c}`,
+      `${a} \\times (${b} + ${c})`,
+      `${a} + ${b} - ${c}`,
+      `${a} \\times ${b} + ${c} \\times ${d}`,
+      `(${a} + ${b}) \\div ${c}`,
+      `${a}^2 + ${b}`,
+      `${a}^2 \\times ${b}`,
+      `${a}^3`,
+      `\\dfrac{${a}}{${b}}`,
+      `\\dfrac{${a} + ${b}}{${c}}`,
+      `\\dfrac{${a}}{${b}} + ${c}`,
+      `${a} \\times ${b} \\times ${c}`,
+      `(${a} + ${b}) \\times (${c} - ${d})`,
+    ]);
+  };
+
+  // ── EXPRESSIONS LITTÉRALES ───────────────────────────────────────────────
+  const litExprPool = () => {
+    const a = rn(), b = rn(), c = rn();
+    const l1 = pickLetter();
+    const l2 = pick(letters.filter(l => l !== l1));
+    const l3 = pick(letters.filter(l => l !== l1 && l !== l2));
+
+    // 65% une lettre, 25% deux lettres, 10% trois lettres
+    const r = Math.random();
+    const nLetters = r < 0.65 ? 1 : r < 0.90 ? 2 : 3;
+
+    if (nLetters === 1) {
+      return {
+        expr: pick([
+          `${a}${l1}`,
+          `${a}${l1} + ${b}`,
+          `${a}${l1} - ${b}`,
+          `${b} + ${a}${l1}`,
+          `${a}(${l1} + ${b})`,
+          `${a}(${l1} - ${b})`,
+          `(${l1} + ${b}) \\times ${a}`,
+          `${l1}^2`,
+          `${l1}^2 + ${b}`,
+          `${a}${l1}^2`,
+          `${a}${l1}^2 + ${b}`,
+          `\\dfrac{${l1}}{${b}}`,
+          `\\dfrac{${a}}{${l1}}`,
+          `\\dfrac{${a}${l1} + ${b}}{${c}}`,
+          `${a}${l1} + ${b}${l1}`,
+          `${l1} + ${b}`,
+          `${l1} - ${b}`,
+          `${b} - ${l1}`,
+          `${a} \\times ${l1}`,
+          `${l1} \\times ${a} + ${b}`,
+        ]),
+        usedLetters: [l1]
+      };
+    }
+
+    if (nLetters === 2) {
+      return {
+        expr: pick([
+          `${a}${l1} + ${b}${l2}`,
+          `${a}${l1} - ${b}${l2}`,
+          `${l1} + ${l2}`,
+          `${l1} \\times ${l2}`,
+          `${l1}${l2}`,
+          `${a}${l1}${l2}`,
+          `${l1}^2 + ${b}${l2}`,
+          `${a}(${l1} + ${l2})`,
+          `\\dfrac{${l1}}{${l2}}`,
+          `\\dfrac{${a}${l1}}{${l2}}`,
+          `${l1} + ${a}${l2} + ${b}`,
+          `${a}${l1} + ${l2} - ${b}`,
+          `${l1}^2 - ${l2}`,
+          `${l1} + ${l2} - ${b}`,
+        ]),
+        usedLetters: [l1, l2]
+      };
+    }
+
+    return {
+      expr: pick([
+        `${l1} + ${l2} + ${l3}`,
+        `${l1} + ${a}${l2} + ${b}${l3}`,
+        `${l1}${l2} + ${l3}`,
+        `${a}${l1} + ${b}${l2} + ${l3}`,
+        `${l1}(${l2} + ${l3})`,
+        `${l1}^2 + ${l2} + ${l3}`,
+      ]),
+      usedLetters: [l1, l2, l3]
+    };
+  };
+
+  if (!isLiteral) {
+    const expr = numExprPool();
+    return {
+      question: `L'expression suivante est-elle une expression littérale ?\n\n$$${expr}$$`,
+      correction: `Cette expression ne contient aucune lettre.  \nDonc, ce n'est pas une expression littérale.`
+    };
+  }
+
+  const { expr, usedLetters } = litExprPool();
+  const coloredExpr = colorLetters(expr, usedLetters);
+  const letterWord = usedLetters.length === 1 ? 'une lettre' : 'plusieurs lettres';
+
   return {
-    question:`Voici cinq expressions :\n\n${lines} \n\nParmi elles, lesquelles sont des expressions littérales ?`,
-    correction:`**Rappel :** une expression littérale contient au moins une lettre représentant un nombre.\n\n${chosen.map((c,i)=>`- $${labels[i]} = ${c.e}$ : **${c.lit?'littérale':'numérique'}**${c.lit?' (contient $'+letter+'$)':''}`).join('\n')}\n\nRéponse : **${litIdx.join(', ')}** ${litIdx.length>1?'sont des expressions':'est une expression'} littérale${litIdx.length>1?'s':''}.`
+    question: `L'expression suivante est-elle une expression littérale ?\n\n$$${expr}$$`,
+    correction:
+      `Cette expression contient ${letterWord} :\n\n$$${coloredExpr}$$\n\n` +
+      `Donc, c'est une expression littérale.`
   };
 };
 
@@ -3906,16 +4165,17 @@ G[111] = () => {
       const stepN = n / g;
       const stepLcm = ppcm(stepN, 100000);
       const loK = Math.ceil(100000 / stepLcm);
-      const hiK = Math.floor(100000000000 / stepLcm);
+      const hiK = Math.floor(100000000 / stepLcm); // 100 000 000 cm = 1 000 km max
       if (loK > hiK) continue;
       const k = rand(loK, Math.min(hiK, loK + 200));
       const realCm = k * stepLcm;
+      if (realCm < 100000 || realCm > 100000000) continue; // 1 km à 1000 km
       const carteCm = realCm / n;
       if (!hasAtMost1Dec(carteCm)) continue;
       if (carteCm < 1 || carteCm > 25) continue;
       const dKm = realCm / 100000;
       if (!hasAtMost1Dec(dKm)) continue;
-      if (dKm < 0.1) continue;
+      if (dKm < 0.1 || dKm > 1000) continue;
       return { n, realCm, carteCm, dKm };
     }
     return null;
@@ -3955,7 +4215,7 @@ G[111] = () => {
     const dKmStr = fmtNum(dKm, 1);
     const tab = makeTab('Carte', '1', nFmt, carteCmStr, realCmFmt, true);
     return {
-      question: `Sur une carte à l'échelle $\\dfrac{1}{${nFmt}}$, la distance entre deux villes est de $${carteCmStr}$ cm.\n\nQuelle est la distance réelle entre ces deux villes ?`,
+      question: `Sur une carte à l'échelle $\\dfrac{1}{${nFmt}}$, la distance entre deux villes est de $${carteCmStr}$ cm.  \nQuelle est la distance réelle entre ces deux villes ?`,
       correction:
         `L'échelle $\\dfrac{1}{${nFmt}}$ signifie que $1\\,\\text{cm}$ sur la carte $= ${nFmt}\\,\\text{cm}$ en réalité.\n\n` +
         `On peut traduire la situation avec un tableau de proportionnalité :\n\n` +
@@ -3998,7 +4258,7 @@ G[111] = () => {
     const dMStr = fmtNum(dM, 1);
     const tab = makeTab('Plan', '1', nFmt, planCmStr, realCmFmt, true);
     return {
-      question: `Sur un plan à l'échelle $\\dfrac{1}{${nFmt}}$, la distance entre deux points est de $${planCmStr}$ cm.\n\nQuelle est la distance réelle entre ces deux points ?`,
+      question: `Sur un plan à l'échelle $\\dfrac{1}{${nFmt}}$, la distance entre deux points est de $${planCmStr}$ cm.  \nQuelle est la distance réelle entre ces deux points ?`,
       correction:
         `L'échelle $\\dfrac{1}{${nFmt}}$ signifie que $1\\,\\text{cm}$ sur le plan $= ${nFmt}\\,\\text{cm}$ en réalité.\n\n` +
         `On peut traduire la situation avec un tableau de proportionnalité :\n\n` +
