@@ -62,10 +62,27 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--i
 .skill-item.active .skill-code { background: var(--accent); color: white; }
 
 /* ── FIXED BUTTONS ── */
-#toggle-btn { position: fixed; top: 20px; left: 20px; z-index: 200; width: 40px; height: 40px; background: var(--paper); border: 1.5px solid var(--border); border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); transition: background .2s; flex-direction: column; gap: 4px; }
+#toggle-btn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 200;
+  width: 40px;
+  height: 40px;
+  background: var(--paper);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+  transition: background .2s, left .35s cubic-bezier(.4,0,.2,1);
+  flex-direction: column;
+  gap: 4px;
+}
 #toggle-btn:hover { background: var(--bg); }
 #toggle-btn span { display: block; width: 16px; height: 1.5px; background: var(--ink); border-radius: 2px; }
-#sidebar:not(.hidden) ~ #toggle-btn { left: calc(var(--sidebar-w) + 16px); }
 #random-btn { position: fixed; top: 20px; right: 20px; z-index: 200; display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 40px; background: var(--ink); color: white; border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: .8rem; font-weight: 500; cursor: pointer; box-shadow: var(--shadow); transition: background .2s, transform .15s; }
 #random-btn:hover { background: #333; transform: scale(1.03); }
 #random-btn:active { transform: scale(.97); }
@@ -177,6 +194,7 @@ body::before { content: ''; position: fixed; top: 0; right: 0; width: 100%; heig
       </div>
       <div class="card-actions">
         <button class="btn btn-correction" id="btn-show" onclick="showCorrection()" disabled>Voir la correction</button>
+        <button class="btn btn-correction" id="btn-hide" onclick="hideCorrection()" style="display:none;">Cacher la correction</button>
         <button class="btn btn-next" id="btn-next" onclick="nextQuestion()" disabled>Autre question →</button>
       </div>
     </div>
@@ -4594,7 +4612,16 @@ CHAPTERS.forEach(ch => {
 
 // ── UI ────────────────────────────────────────────────────────────────────────
 function toggleChapter(el) { el.parentElement.classList.toggle('open'); }
-function toggleSidebar()   { document.getElementById('sidebar').classList.toggle('hidden'); }
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const btn = document.getElementById('toggle-btn');
+  sidebar.classList.toggle('hidden');
+  if (sidebar.classList.contains('hidden')) {
+    btn.style.left = '20px';
+  } else {
+    btn.style.left = `calc(${getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w')} + 16px)`;
+  }
+}
 
 let currentSkill = null;
 
@@ -4620,11 +4647,24 @@ function randomSkill() {
 }
 
 function showCorrection() {
-  const sec=document.getElementById('answer-section');
-  const aEl=document.getElementById('answer-text');
+  const sec = document.getElementById('answer-section');
+  const aEl = document.getElementById('answer-text');
   sec.classList.add('visible');
-  document.getElementById('btn-show').disabled=true;
-  renderContent(aEl.dataset.raw||'', aEl);
+  document.getElementById('btn-show').disabled = true;
+  document.getElementById('btn-show').style.display = 'none';
+  renderContent(aEl.dataset.raw || '', aEl);
+
+  // Afficher le bouton "Cacher"
+  const btnHide = document.getElementById('btn-hide');
+  btnHide.style.display = 'inline-flex';
+}
+
+function hideCorrection() {
+  const sec = document.getElementById('answer-section');
+  sec.classList.remove('visible');
+  document.getElementById('btn-show').disabled = false;
+  document.getElementById('btn-show').style.display = 'inline-flex';
+  document.getElementById('btn-hide').style.display = 'none';
 }
 
 function nextQuestion() { loadQuestion(); }
@@ -4641,6 +4681,9 @@ function loadQuestion() {
   aEl.innerHTML='';
   btnShow.disabled=false;
   btnNext.disabled=false;
+
+  document.getElementById('btn-show').style.display = 'inline-flex';
+  document.getElementById('btn-hide').style.display = 'none';
 
   const gen = G[currentSkill.code];
   if (!gen) {
@@ -4669,6 +4712,9 @@ window.addEventListener('load', () => {
     document.getElementById('welcome').style.display = 'block';
   }
 });
+
+// Initialiser la position du bouton toggle
+document.getElementById('toggle-btn').style.left = `calc(${getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w')} + 16px)`;
 
 function goHome() {
   currentSkill = null;
