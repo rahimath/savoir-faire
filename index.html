@@ -1201,23 +1201,171 @@ G[25] = () => {
 
 // ── SÉQUENCE 3 : Fractions I ──────────────────────────────────────────────────
 G[31] = () => {
-  const d=pick([2,3,4,5,6,8,10]), n=rand(1,d*2);
-  const entier=Math.floor(n/d), reste=n%d;
+  const d = rand(2, 9);
+
+  const simplifiableDenoms = {
+    4: [2],
+    6: [2, 3],
+    8: [2, 4],
+    9: [3],
+  };
+
+  const canSimplify = simplifiableDenoms[d] !== undefined;
+  const doSimplify = canSimplify && Math.random() < 0.7;
+
+  let displayD, displayN, realN, realD;
+
+  if (doSimplify) {
+    const subD = pick(simplifiableDenoms[d]);
+    const factor = d / subD;
+    let attempts = 0;
+    do {
+      displayN = rand(1, 4 * subD - 1);
+      attempts++;
+    } while (displayN % subD === 0 || attempts > 500);
+    displayD = subD;
+    realN = displayN * factor;
+    realD = d;
+  } else {
+    let attempts = 0;
+    do {
+      realN = rand(1, 4 * d - 1);
+      attempts++;
+    } while (realN % d === 0 || attempts > 500);
+    displayN = realN;
+    displayD = d;
+    realD = d;
+  }
+
+  const margin = 3;
+  const W = 400;
+  const totalUnits = 4;
+  const cellW = (W - margin * 2) / totalUnits;
+  const H = 70;
+  const mid = H / 2;
+  const px = val => margin + val * cellW;
+
+  const ordinalStr = (n) => n === 1 ? '1ère' : `${n}ème`;
+
+  const makeAxis = (withPoint) => {
+    let svg = '';
+
+    svg += `<line x1="${px(0)}" y1="${mid}" x2="${px(4)}" y2="${mid}" stroke="#1a1714" stroke-width="1"/>`;
+    svg += `<polygon points="${px(4)},${mid} ${px(4) - 6},${mid - 3} ${px(4) - 6},${mid + 3}" fill="#1a1714"/>`;
+
+    for (let i = 0; i <= 3; i++) {
+      svg += `<line x1="${px(i)}" y1="${mid - 4}" x2="${px(i)}" y2="${mid + 4}" stroke="#1a1714" stroke-width="1"/>`;
+      if (i === 0 || i === 1) {
+        svg += `<text x="${px(i)}" y="${mid + 17}" text-anchor="middle" font-family="Lora,serif" font-size="11" fill="#1a1714">${i}</text>`;
+      }
+      for (let k = 1; k < d; k++) {
+        const xPos = i + k / d;
+        if (xPos >= 4) continue;
+        svg += `<line x1="${px(xPos)}" y1="${mid - 2.5}" x2="${px(xPos)}" y2="${mid + 2.5}" stroke="#1a1714" stroke-width="0.6"/>`;
+      }
+    }
+
+    if (withPoint) {
+      const ptX = px(realN / realD);
+      svg += `<line x1="${ptX}" y1="${mid - 6}" x2="${ptX}" y2="${mid + 6}" stroke="#c0392b" stroke-width="1.5"/>`;
+      svg += `<text x="${ptX}" y="${mid - 12}" text-anchor="middle" font-family="Lora,serif" font-size="12" font-weight="600" fill="#c0392b">A</text>`;
+
+      // Fraction dessinée en SVG sous le trait rouge
+      const fracSize = 11;
+      const barW = Math.max(String(displayN).length, String(displayD).length) * 5 + 2;
+      svg += `<text x="${ptX}" y="${mid + 20}" text-anchor="middle" font-family="Lora,serif" font-size="${fracSize}" font-weight="600" fill="#c0392b">${displayN}</text>`;
+      svg += `<line x1="${ptX - barW/2}" y1="${mid + 23}" x2="${ptX + barW/2}" y2="${mid + 23}" stroke="#c0392b" stroke-width="0.9"/>`;
+      svg += `<text x="${ptX}" y="${mid + 34}" text-anchor="middle" font-family="Lora,serif" font-size="${fracSize}" font-weight="600" fill="#c0392b">${displayD}</text>`;
+    }
+
+    return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%; display:block; margin:0px auto;">
+    ${svg}
+  </svg>`;
+  };
+
+  let correction;
+  if (!doSimplify) {
+    correction =
+      `L'unité est divisée en $${d}$ parts et le numérateur est égal à $${realN}$.  \nLe point $A$ se situe sur la ${ordinalStr(realN)} graduation :\n\n${makeAxis(true)}`;
+  } else {
+    correction =
+      `L'unité est divisée en $${d}$ parts : $${frac(displayN, displayD)} = ${frac(realN, realD)}$\n\n` +
+      `Le point $A$ se situe sur la ${ordinalStr(realN)} graduation :\n\n${makeAxis(true)}`;
+  }
+
   return {
-    // question: `Sur une droite graduée dont l'unité est divisée en $${d}$ parts égales, place la fraction $${frac(n,d)}$.`,
-    // correction: `$${frac(n,d)} = ${entier > 0 ? entier + ' + ' + frac(reste,d) + ' = ' : ''}${entier > 0 ? entier : ''}${reste>0? (entier>0?'+':'')+frac(reste,d):''}$\n\nOn divise chaque unité en $${d}$ parts. Le point se trouve à $${n}$ graduation${n>1?'s':''} depuis $0$${entier>0?' (soit après l\'entier $'+entier+'$)':''}.`
-    question: `En cours de construction ...`,
-    correction: ``
+    question: `Placer le point $A$ d'abscisse $${frac(displayN, displayD)}$ sur la droite graduée ci-dessous :\n\n${makeAxis(false)}`,
+    correction
   };
 };
 
 G[32] = () => {
-  const d=pick([2,3,4,5,6,8]), n=rand(1,d*2-1);
+  const d = rand(2, 9);
+  let n;
+  do {
+    n = rand(1, 4 * d - 1);
+  } while (n % d === 0);
+
+  const margin = 3;
+  const W = 400;
+  const totalUnits = 4;
+  const cellW = (W - margin * 2) / totalUnits;
+  const H = 60;
+  const mid = H / 2;
+
+  const px = val => margin + val * cellW;
+
+  const ordinalPlural = (d) => {
+    if (d === 2) return 'demis';
+    if (d === 3) return 'tiers';
+    if (d === 4) return 'quarts';
+    if (d === 5) return 'cinquièmes';
+    if (d === 6) return 'sixièmes';
+    if (d === 7) return 'septièmes';
+    if (d === 8) return 'huitièmes';
+    if (d === 9) return 'neuvièmes';
+    return `${d}ièmes`;
+  };
+
+  const makeAxis = (withPoint) => {
+    let svg = '';
+
+    svg += `<line x1="${px(0)}" y1="${mid}" x2="${px(4)}" y2="${mid}" stroke="#1a1714" stroke-width="1"/>`;
+    svg += `<polygon points="${px(4)},${mid} ${px(4) - 6},${mid - 3} ${px(4) - 6},${mid + 3}" fill="#1a1714"/>`;
+
+    for (let i = 0; i <= 3; i++) {
+      svg += `<line x1="${px(i)}" y1="${mid - 4}" x2="${px(i)}" y2="${mid + 4}" stroke="#1a1714" stroke-width="1"/>`;
+
+      if (i === 0 || i === 1) {
+        svg += `<text x="${px(i)}" y="${mid + 17}" text-anchor="middle" font-family="Lora,serif" font-size="11" fill="#1a1714">${i}</text>`;
+      }
+
+      for (let k = 1; k < d; k++) {
+        const xPos = i + k / d;
+        if (xPos >= 4) continue;
+        svg += `<line x1="${px(xPos)}" y1="${mid - 2.5}" x2="${px(xPos)}" y2="${mid + 2.5}" stroke="#1a1714" stroke-width="0.6"/>`;
+      }
+    }
+
+    if (withPoint) {
+      const ptX = px(n / d);
+      svg += `<line x1="${ptX}" y1="${mid - 6}" x2="${ptX}" y2="${mid + 6}" stroke="#c0392b" stroke-width="1.5"/>`;
+      svg += `<text x="${ptX}" y="${mid - 12}" text-anchor="middle" font-family="Lora,serif" font-size="12" font-weight="600" fill="#c0392b">A</text>`;
+    }
+
+    return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%; display:block; margin:0px auto;">
+    ${svg}
+  </svg>`;
+  };
+
+  const rangStr = n === 1 ? '1ère' : `${n}ème`;
+
   return {
-    // question: `Sur une droite graduée divisée en $${d}$ parts par unité, un point $P$ est placé à la $${n}$${n===1?'re':'e'} graduation depuis $0$. Donne l'abscisse de $P$ sous forme de fraction.`,
-    // correction: `Chaque graduation vaut $${frac(1,d)}$.\n\nLe point $P$ est à $${n}$ graduation${n>1?'s':''}, donc son abscisse est :\n\n$$${frac(n,d)}$$\n\n${pgcd(n,d)>1?'On peut simplifier : $'+simplFrac(n,d)+'$':''}`
-    question: `En cours de construction ...`,
-    correction: ``
+    question: `Quelle est l'abscisse fractionnaire du point $A$ sur la droite graduée ci-dessous ?\n\n${makeAxis(true)}`,
+    correction:
+      `L'unité est divisée en $${d}$ parts, les petites graduations représentent des ${ordinalPlural(d)}.  \n` +
+      `Le point $A$ est situé sur la ${rangStr} petite graduation.\n\n` +
+      `Donc, le point $A$ a pour abscisse $${frac(n, d)}$`
   };
 };
 
