@@ -249,6 +249,131 @@ function pgcd(a, b) { a=Math.abs(a); b=Math.abs(b); while(b){[a,b]=[b,a%b];} ret
 function simplFrac(n, d) { const g=pgcd(n,d); return g>1 ? frac(n/g,d/g) : frac(n,d); }
 function ppcm(a, b) { return (a*b)/pgcd(a,b); }
 
+function makeTriangleSVG(A, B, C, labels) {
+  const svgW = 340, svgH = 240;
+  const pad = 44;
+
+  const pts = [A, B, C];
+  const minX = Math.min(...pts.map(p => p.x));
+  const maxX = Math.max(...pts.map(p => p.x));
+  const minY = Math.min(...pts.map(p => p.y));
+  const maxY = Math.max(...pts.map(p => p.y));
+
+  const scaleX = (svgW - 2 * pad) / Math.max(maxX - minX, 0.01);
+  const scaleY = (svgH - 2 * pad) / Math.max(maxY - minY, 0.01);
+  const scale = Math.min(scaleX, scaleY);
+
+  const cx = (svgW - (maxX - minX) * scale) / 2;
+  const cy = (svgH - (maxY - minY) * scale) / 2;
+
+  const tx = p => cx + (p.x - minX) * scale;
+  const ty = p => svgH - (cy + (p.y - minY) * scale);
+
+  const sA = { x: tx(A), y: ty(A) };
+  const sB = { x: tx(B), y: ty(B) };
+  const sC = { x: tx(C), y: ty(C) };
+
+  const fmt = n => {
+    if (n == null) return '';
+    if (Number.isInteger(n)) return `${n}`;
+    return `${n.toFixed(1).replace('.', ',')}`;
+  };
+
+  const sideLabel = (p1, p2, p3, text, color) => {
+    // p3 = le troisième sommet (pour savoir de quel côté est l'intérieur)
+    if (text == null) return '';
+    const mx = (p1.x + p2.x) / 2;
+    const my = (p1.y + p2.y) / 2;
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    if (angle > 90 || angle < -90) angle += 180;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    // Normale unitaire
+    let nx = -dy / len;
+    let ny = dx / len;
+    // Vérifier que le décalage va vers l'extérieur (opposé à p3)
+    const toP3x = p3.x - mx;
+    const toP3y = p3.y - my;
+    if (nx * toP3x + ny * toP3y > 0) { nx = -nx; ny = -ny; }
+    const dist = 14;
+    return `<text x="${mx + nx*dist}" y="${my + ny*dist}" text-anchor="middle" dominant-baseline="middle"
+      font-family="Lora,serif" font-size="11" fill="${color}"
+      transform="rotate(${angle}, ${mx + nx*dist}, ${my + ny*dist})">${text}</text>`;
+  };
+
+  // Arc d'angle
+  const makeArc = (vertex, p1, p2, r, label) => {
+    const a1 = Math.atan2(p1.y - vertex.y, p1.x - vertex.x);
+    const a2 = Math.atan2(p2.y - vertex.y, p2.x - vertex.x);
+    let diff = a2 - a1;
+    while (diff > Math.PI) diff -= 2 * Math.PI;
+    while (diff < -Math.PI) diff += 2 * Math.PI;
+    const end = a1 + diff;
+    const x1 = vertex.x + r * Math.cos(a1);
+    const y1 = vertex.y + r * Math.sin(a1);
+    const x2 = vertex.x + r * Math.cos(end);
+    const y2 = vertex.y + r * Math.sin(end);
+    const largeArc = Math.abs(diff) > Math.PI ? 1 : 0;
+    const sweep = diff > 0 ? 1 : 0;
+    const midAngle = a1 + diff / 2;
+    const labelR = r + 14;
+    const lx = vertex.x + labelR * Math.cos(midAngle);
+    const ly = vertex.y + labelR * Math.sin(midAngle);
+    return `
+      <path d="M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} ${sweep} ${x2} ${y2}"
+        fill="none" stroke="#2a6496" stroke-width="1"/>
+      ${label != null ? `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle"
+        font-family="Lora,serif" font-size="10" fill="#2a6496">${fmt(label)}°</text>` : ''}
+    `;
+  };
+
+  // Labels des sommets décalés vers l'extérieur
+  const centroid = { x: (sA.x + sB.x + sC.x) / 3, y: (sA.y + sB.y + sC.y) / 3 };
+  const labelOffset = (pt, dist = 16) => {
+    const dx = pt.x - centroid.x, dy = pt.y - centroid.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    return { x: pt.x + dx / len * dist, y: pt.y + dy / len * dist };
+  };
+
+  const lA = labelOffset(sA);
+  const lB = labelOffset(sB);
+  const lC = labelOffset(sC);
+
+  let svg = `<svg viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg"
+    style="max-width:100%; display:block; margin:12px auto; background:#fdfbf7; border:1.5px solid #ddd8cf; border-radius:10px;">`;
+
+  svg += `<polygon points="${sA.x},${sA.y} ${sB.x},${sB.y} ${sC.x},${sC.y}"
+    fill="none" stroke="#1a1714" stroke-width="1.5"/>`;
+
+  // Rayon de l'arc inversement proportionnel à l'angle : petit angle = grand arc
+  const arcRadius = (angleDeg) => {
+    if (angleDeg == null) return 18;
+    if (angleDeg <= 25)  return 35;
+    if (angleDeg <= 35)  return 32;
+    if (angleDeg <= 55)  return 28;
+    if (angleDeg <= 80)  return 23;
+    if (angleDeg <= 110) return 19;
+    return 17;
+  };
+
+  if (labels.angleA != null) svg += makeArc(sA, sB, sC, arcRadius(labels.angleA), labels.angleA);
+  if (labels.angleB != null) svg += makeArc(sB, sA, sC, arcRadius(labels.angleB), labels.angleB);
+  if (labels.angleC != null) svg += makeArc(sC, sA, sB, arcRadius(labels.angleC), labels.angleC);
+
+  if (labels.AB != null) svg += sideLabel(sA, sB, sC, `${fmt(labels.AB)} cm`, '#c0392b');
+  if (labels.BC != null) svg += sideLabel(sB, sC, sA, `${fmt(labels.BC)} cm`, '#c0392b');
+  if (labels.AC != null) svg += sideLabel(sA, sC, sB, `${fmt(labels.AC)} cm`, '#c0392b');
+
+  const ptStyle = `font-family="Lora,serif" font-size="13" font-weight="600" fill="#1a1714" text-anchor="middle" dominant-baseline="middle" font-style="italic"`;
+  svg += `<text x="${lA.x}" y="${lA.y}" ${ptStyle}>A</text>`;
+  svg += `<text x="${lB.x}" y="${lB.y}" ${ptStyle}>B</text>`;
+  svg += `<text x="${lC.x}" y="${lC.y}" ${ptStyle}>C</text>`;
+
+  svg += `</svg>`;
+  return svg;
+}
+
 // ── GENERATORS ────────────────────────────────────────────────────────────────
 // Each returns { question:string, correction:string }
 // Both are pure Markdown+LaTeX strings, no API needed.
@@ -1231,33 +1356,19 @@ G[41] = () => {
     a = Math.round(rand(20, 99)) / 10;
     b = Math.round(rand(20, 99)) / 10;
     c = Math.round(rand(20, 99)) / 10;
-  } while (
-    a + b <= c || a + c <= b || b + c <= a
-  );
+  } while (a + b <= c || a + c <= b || b + c <= a);
 
-  // Le segment de base est celui avec la plus grande longueur
-  // On identifie quel côté est le plus grand
   const sides = [
     { name: '[AB]', endpoints: ['A','B'], len: c },
     { name: '[BC]', endpoints: ['B','C'], len: a },
     { name: '[AC]', endpoints: ['A','C'], len: b },
   ];
   sides.sort((x, y) => y.len - x.len);
-  const base = sides[0]; // le plus grand côté
-  const others = sides.slice(1);
-
-  // Les deux autres côtés déterminent les arcs depuis chaque extrémité
-  // arc depuis endpoint[0] de base avec rayon = côté opposé à endpoint[1]
-  // On cherche pour chaque extrémité du segment de base quel rayon utiliser
+  const base = sides[0];
   const [P1, P2] = base.endpoints;
-
-  // Le rayon depuis P1 est la longueur du côté qui relie P1 au 3ème sommet
-  // Le rayon depuis P2 est la longueur du côté qui relie P2 au 3ème sommet
-  // 3ème sommet = le sommet qui n'est pas dans base.endpoints
   const allPts = ['A','B','C'];
   const thirdPt = allPts.find(p => !base.endpoints.includes(p));
 
-  // Trouver les longueurs des côtés reliant P1→thirdPt et P2→thirdPt
   const getLen = (p1, p2) => {
     if ((p1==='A'&&p2==='B')||(p1==='B'&&p2==='A')) return c;
     if ((p1==='B'&&p2==='C')||(p1==='C'&&p2==='B')) return a;
@@ -1267,16 +1378,32 @@ G[41] = () => {
   const r1 = getLen(P1, thirdPt);
   const r2 = getLen(P2, thirdPt);
 
+  // Premier côté tracé en bas : P1 à gauche, P2 à droite sur l'axe x
+  const coordsMap = {};
+  coordsMap[P1] = { x: 0, y: 0 };
+  coordsMap[P2] = { x: base.len, y: 0 };
+  // thirdPt par intersection des cercles
+  const d = base.len;
+  const cosP1 = (r1*r1 + d*d - r2*r2) / (2*r1*d);
+  const sinP1 = Math.sqrt(Math.max(0, 1 - cosP1*cosP1));
+  coordsMap[thirdPt] = { x: r1 * cosP1, y: r1 * sinP1 };
+
+  const Apt = coordsMap['A'], Bpt = coordsMap['B'], Cpt = coordsMap['C'];
+
+  const triSVG = makeTriangleSVG(Apt, Bpt, Cpt, {
+    AB: c, BC: a, AC: b
+    // pas d'angles pour G[41]
+  });
+
   return {
     question: `Construire le triangle $ABC$ tel que :\n\n$AB = ${fmt(c)}\\,\\text{cm}$, $BC = ${fmt(a)}\\,\\text{cm}$ et $AC = ${fmt(b)}\\,\\text{cm}$`,
-    correction: `Étapes de construction :\n\n1. Tracer le segment $${base.name}$ de longueur $${fmt(base.len)}\\,\\text{cm}$.\n2. Du point $${P1}$, tracer un arc de cercle de rayon $${fmt(r1)}\\,\\text{cm}$.\n3. Du point $${P2}$, tracer un arc de cercle de rayon $${fmt(r2)}\\,\\text{cm}$.\n4. Le point $${thirdPt}$ est l'intersection des deux arcs de cercle.\n5. Relier les points $A$, $B$ et $C$`
+    correction: `Étapes de construction :\n\n1. Tracer le segment $${base.name}$ de longueur $${fmt(base.len)}\\,\\text{cm}$.\n2. Du point $${P1}$, tracer un arc de cercle de rayon $${fmt(r1)}\\,\\text{cm}$.\n3. Du point $${P2}$, tracer un arc de cercle de rayon $${fmt(r2)}\\,\\text{cm}$.\n4. Le point $${thirdPt}$ est l'intersection des deux arcs de cercle.\n5. Relier les points $A$, $B$ et $C$.\n\n${triSVG}`
   };
 };
 
 G[42] = () => {
   const fmt = n => Number.isInteger(n) ? `${n}` : `${n.toFixed(1).replace('.', '{,}')}`;
 
-  // Choisir deux côtés ayant un sommet en commun
   const pairsCotes = [
     { cotes: ['AB','AC'], commun: 'A', autres: ['B','C'] },
     { cotes: ['AB','BC'], commun: 'B', autres: ['A','C'] },
@@ -1287,7 +1414,6 @@ G[42] = () => {
   const sommet = pair.commun;
   const [autreP1, autreP2] = pair.autres;
 
-  // Longueurs
   let l1, l2;
   do {
     l1 = Math.round(rand(20, 99)) / 10;
@@ -1295,26 +1421,63 @@ G[42] = () => {
   } while (l1 + l2 > 16);
 
   const angle = rand(20, 140);
+  const angleRad = angle * Math.PI / 180;
   const angleStr = `\\widehat{${autreP1}${sommet}${autreP2}}`;
 
-  // Le segment de base est le plus grand
-  const base      = l1 >= l2 ? cote1 : cote2;
-  const basePts   = base.split(''); // ex: ['A','B']
-  const baseLen   = l1 >= l2 ? l1 : l2;
-  const otherLen  = l1 >= l2 ? l2 : l1;
-  const otherPt   = l1 >= l2 ? autreP2 : autreP1; // le point à placer
-  const fromPt    = sommet; // on trace l'angle depuis le sommet commun
+  // Le segment de base = le plus long des deux côtés
+  const base = l1 >= l2 ? cote1 : cote2;
+  const baseLen = l1 >= l2 ? l1 : l2;
+  const otherCote = l1 >= l2 ? cote2 : cote1;
+  const otherLen = l1 >= l2 ? l2 : l1;
+  // otherPt = le point à placer (pas le sommet commun, pas l'autre extrémité de base)
+  const baseEndpoints = base.split('');
+  const otherPt = baseEndpoints.find(p => p !== sommet);
+
+  // Placement SVG : le segment de base est horizontal en bas
+  // sommet commun à gauche (x=0, y=0), autre extrémité du segment de base à droite
+  const coordsMap = {};
+  coordsMap[sommet] = { x: 0, y: 0 };
+  coordsMap[otherPt] = { x: baseLen, y: 0 };
+
+  // Le 3ème point = otherCote sans sommet
+  const thirdPt = otherCote.split('').find(p => p !== sommet);
+  coordsMap[thirdPt] = {
+    x: otherLen * Math.cos(angleRad),
+    y: otherLen * Math.sin(angleRad)
+  };
+
+  const Apt = coordsMap['A'], Bpt = coordsMap['B'], Cpt = coordsMap['C'];
+
+  // Angle à afficher : seulement celui donné, au sommet commun
+  const anglesMap = { angleA: null, angleB: null, angleC: null };
+  if (sommet === 'A') anglesMap.angleA = angle;
+  if (sommet === 'B') anglesMap.angleB = angle;
+  if (sommet === 'C') anglesMap.angleC = angle;
+
+  // Longueurs : seulement les deux données
+  const lenLabels = { AB: null, BC: null, AC: null };
+  const setLen = (cote, val) => {
+    if (cote === 'AB') lenLabels.AB = val;
+    else if (cote === 'BC') lenLabels.BC = val;
+    else if (cote === 'AC') lenLabels.AC = val;
+  };
+  setLen(cote1, l1);
+  setLen(cote2, l2);
+
+  const triSVG = makeTriangleSVG(Apt, Bpt, Cpt, {
+    ...lenLabels,
+    ...anglesMap
+  });
 
   return {
     question: `Construire le triangle $ABC$ tel que :\n\n$${cote1} = ${fmt(l1)}\\,\\text{cm}$, $${cote2} = ${fmt(l2)}\\,\\text{cm}$ et $${angleStr} = ${angle}°$`,
-    correction: `Étapes de construction :\n\n1. Tracer le segment $[${base}]$ de longueur $${fmt(baseLen)}\\,\\text{cm}$.\n2. En $${sommet}$, tracer l'angle $${angleStr}$ de $${angle}°$ à l'aide du rapporteur.\n3. Sur le côté de l'angle issu de $${sommet}$, placer $${otherPt}$ à $${fmt(otherLen)}\\,\\text{cm}$ de $${sommet}$\n4. Relier les points $${otherPt}$ et $${basePts.find(p => p !== sommet)}$`
+    correction: `**Étapes de construction :**\n\n1. Tracer le segment $[${base}]$ de longueur $${fmt(baseLen)}\\,\\text{cm}$.\n2. En $${sommet}$, tracer l'angle $${angleStr}$ de $${angle}°$ à l'aide du rapporteur.\n3. Sur le côté de l'angle issu de $${sommet}$, placer $${thirdPt}$ à $${fmt(otherLen)}\\,\\text{cm}$ de $${sommet}$.\n4. Relier les points $${thirdPt}$ et $${otherPt}$.\n\n${triSVG}`
   };
 };
 
 G[43] = () => {
   const fmt = n => Number.isInteger(n) ? `${n}` : `${n.toFixed(1).replace('.', '{,}')}`;
 
-  // Choisir un côté
   const cotesPossibles = [
     { cote: 'AB', pts: ['A','B'], tiers: 'C' },
     { cote: 'BC', pts: ['B','C'], tiers: 'A' },
@@ -1323,29 +1486,73 @@ G[43] = () => {
   const { cote, pts, tiers } = pick(cotesPossibles);
   const [P1, P2] = pts;
 
-  // Longueur
   const len = Math.round(rand(20, 99)) / 10;
 
-  // Deux angles dont la somme <= 160°
   let a1, a2;
   do {
     a1 = rand(20, 140);
     a2 = rand(20, 140);
   } while (a1 + a2 > 160);
 
-  // Ordre aléatoire des angles dans l'énoncé
+  const a3 = 180 - a1 - a2;
+
   const swapped = pick([true, false]);
-  const [angleA, ptA, angleB, ptB] = swapped
+  const [angleA_val, ptA, angleB_val, ptB] = swapped
     ? [a2, P2, a1, P1]
     : [a1, P1, a2, P2];
 
-  const angle3 = 180 - a1 - a2;
   const angleStr1 = `\\widehat{${tiers}${ptA}${ptA === P1 ? P2 : P1}}`;
   const angleStr2 = `\\widehat{${tiers}${ptB}${ptB === P1 ? P2 : P1}}`;
 
+  // P1 à gauche, P2 à droite sur l'axe x
+  const coordsMap = {};
+  coordsMap[P1] = { x: 0, y: 0 };
+  coordsMap[P2] = { x: len, y: 0 };
+
+  // angleAtP1 = angle géométrique au sommet P1 (gauche), angleAtP2 au sommet P2 (droite)
+  // ptA est le sommet avec angleA_val, ptB avec angleB_val
+  // Si swapped : ptA=P2, ptB=P1 → angleAtP1 = angleB_val, angleAtP2 = angleA_val
+  // Si !swapped : ptA=P1, ptB=P2 → angleAtP1 = angleA_val, angleAtP2 = angleB_val
+  const angleAtP1 = swapped ? angleB_val : angleA_val;
+  const angleAtP2 = swapped ? angleA_val : angleB_val;
+
+  const r1rad = angleAtP1 * Math.PI / 180;
+  const sinSum = Math.sin((angleAtP1 + angleAtP2) * Math.PI / 180);
+  const tLen = len * Math.sin(angleAtP2 * Math.PI / 180) / sinSum;
+
+  coordsMap[tiers] = {
+    x: tLen * Math.cos(r1rad),
+    y: tLen * Math.sin(r1rad)
+  };
+
+  const Apt = coordsMap['A'], Bpt = coordsMap['B'], Cpt = coordsMap['C'];
+
+  // Angles à afficher : celui en P1 = angleAtP1, celui en P2 = angleAtP2
+  const anglesMap = { angleA: null, angleB: null, angleC: null };
+  const setAngle = (pt, val) => {
+    if (pt === 'A') anglesMap.angleA = val;
+    if (pt === 'B') anglesMap.angleB = val;
+    if (pt === 'C') anglesMap.angleC = val;
+  };
+  setAngle(P1, angleAtP1);
+  setAngle(P2, angleAtP2);
+
+  // Longueur : seulement celle donnée
+  const lenLabels = { AB: null, BC: null, AC: null };
+  if (cote === 'AB') lenLabels.AB = len;
+  else if (cote === 'BC') lenLabels.BC = len;
+  else if (cote === 'AC') lenLabels.AC = len;
+
+  const triSVG = makeTriangleSVG(Apt, Bpt, Cpt, {
+    ...lenLabels,
+    ...anglesMap
+  });
+
+  // Les étapes utilisent ptA et ptB (les sommets de l'énoncé)
+  // Le 1er côté tracé = le côté de base de l'énoncé
   return {
-    question: `Construire le triangle $ABC$ tel que :\n\n$${cote} = ${fmt(len)}\\,\\text{cm}$, $${angleStr1} = ${angleA}°$ et $${angleStr2} = ${angleB}°$`,
-    correction: `Étapes de construction :\n\n1. Tracer le segment $[${cote}]$ de longueur $${fmt(len)}\\,\\text{cm}$.\n2. En $${ptA}$, tracer l'angle $${angleStr1}$ de $${angleA}°$ à l'aide du rapporteur.\n3. En $${ptB}$, tracer l'angle $${angleStr2}$ de $${angleB}°$ à l'aide du rapporteur.\n4. Le point $${tiers}$ est l'intersection des deux demi-droites tracées.`
+    question: `Construire le triangle $ABC$ tel que :\n\n$${cote} = ${fmt(len)}\\,\\text{cm}$, $${angleStr1} = ${angleA_val}°$ et $${angleStr2} = ${angleB_val}°$`,
+    correction: `Étapes de construction :\n\n1. Tracer le segment $[${cote}]$ de longueur $${fmt(len)}\\,\\text{cm}$.\n2. En $${ptA}$, tracer l'angle $${angleStr1}$ de $${angleA_val}°$ à l'aide du rapporteur.\n3. En $${ptB}$, tracer l'angle $${angleStr2}$ de $${angleB_val}°$ à l'aide du rapporteur.\n4. Le point $${tiers}$ est l'intersection des deux demi-droites tracées.\n\n${triSVG}`
   };
 };
 
@@ -4713,8 +4920,15 @@ window.addEventListener('load', () => {
   }
 });
 
-// Initialiser la position du bouton toggle
-document.getElementById('toggle-btn').style.left = `calc(${getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w')} + 16px)`;
+// Initialiser la position du bouton toggle sans animation
+const _btn = document.getElementById('toggle-btn');
+_btn.style.transition = 'none';
+_btn.style.left = `calc(${getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w')} + 16px)`;
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    _btn.style.transition = '';
+  });
+});
 
 function goHome() {
   currentSkill = null;
