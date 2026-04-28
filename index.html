@@ -3784,16 +3784,16 @@ G[93] = () => {
 
   // Règles
   const rules = [
-    `**Règle 1 :** On ne met pas le signe $\\times$ devant une lettre ou une parenthèse.`,
-    `**Règle 2 :** On écrit d'abord les nombres, puis les lettres (par ordre alphabétique).`,
+    `Règle 1 : On ne met pas le signe $\\times$ devant une lettre ou une parenthèse.`,
+    `Règle 2 : On écrit d'abord les nombres, puis les lettres (par ordre alphabétique).`,
   ];
-  if (hasOne) rules.push(`**Règle 3 :** On n'écrit pas le coefficient $1$ devant une lettre.`);
-  if (hasPow) rules.push(`**Règle ${hasOne ? 4 : 3} :** On utilise la notation exposant si on multiplie plusieurs fois la même lettre entre elle.`);
+  if (hasOne) rules.push(`Règle 3 : On n'écrit pas le coefficient $1$ devant une lettre.`);
+  if (hasPow) rules.push(`Règle ${hasOne ? 4 : 3} : On utilise la notation exposant si on multiplie plusieurs fois la même lettre entre elle.`);
 
   return {
     question: `Simplifier l'expression :\n\n$$${finalExpr}$$`,
     correction:
-      `**Règles d'écriture :**\n\n${rules.map(r => `- ${r}`).join('\n')}\n\n$$${finalExpr} = ${finalSimpl}$$`
+      `Règles d'écriture :\n\n${rules.map(r => `- ${r}`).join('\n')}\n\n$$${finalExpr} = ${finalSimpl}$$`
   };
 };
 
