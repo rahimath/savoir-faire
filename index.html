@@ -172,7 +172,7 @@ body::before { content: ''; position: fixed; top: 0; right: 0; width: 100%; heig
     <h2>Prêt à s'entraîner ?</h2>
     <p>Choisis un savoir-faire dans le menu à gauche. Une question te sera posée, et tu pourras afficher la correction quand tu veux.</p>
     <div class="hint-grid">
-      <div class="hint-card"><strong>Comment ça marche</strong>Clique sur un savoir-faire dans le menu, réponds mentalement, puis vérifie avec la correction.</div>
+      <div class="hint-card"><strong>Comment ça marche</strong>Clique sur un savoir-faire dans le menu, réponds à l'écrit, puis vérifie avec la correction.</div>
       <div class="hint-card"><strong>Astuce</strong>Génère autant de questions différentes que tu veux sur le même savoir-faire avec « Autre question ».</div>
     </div>
   </div>
@@ -3545,16 +3545,15 @@ G[93] = () => {
   const op = () => pick(['+', '-']);
   const letterSets = [['a','b','c'], ['x','y','z']];
   const [x, y, z] = pick(letterSets);
-  const a = rand(2, 9), b = rand(2, 9), c = rand(2, 9);
+  const nums = shuffle([2,3,4,5,6,7,8,9]);
+  const a = nums[0], b = nums[1], c = nums[2];
 
-  // Terme additionnel optionnel (30%)
-  const addExtra = Math.random() < 0.30;
+  const addExtra = Math.random() < 0.20;
   const extraOp = op();
   const extraPos = pick(['start', 'end']);
 
   const wrapExtra = (expr, simplified) => {
     if (!addExtra) return { expr, simplified };
-    const term = `${c}`;
     if (extraPos === 'start') return {
       expr: `${c} ${extraOp} ${expr}`,
       simplified: `${c} ${extraOp} ${simplified}`
@@ -3565,49 +3564,39 @@ G[93] = () => {
     };
   };
 
-  // Shuffle d'un tableau de facteurs
   const shuffleFactors = arr => shuffle([...arr]);
-
-  // Affiche une liste de facteurs avec \times
   const withTimes = arr => arr.join(' \\times ');
 
-  // Niveaux
-  const level = pick([1,1,2,2,3,3,4,4,5,5,6,6,7,7]);
+  const level = pick([1,1,1,2,2,3,3,4,4,5,6,7]);
   let baseExpr, baseSimpl, hasOne = false, hasPow = false;
 
-  const pm = op(); // ± pour les niveaux 6 et 7
+  const pm = op();
 
   if (level === 1) {
-    const sub = pick([1,2,3,4,5,6]);
+    const sub = pick([1,1,2,2,3,4,4,5,6]);
     if (sub === 1) {
-      // a * x
       const factors = shuffleFactors([`${a}`, x]);
       baseExpr = withTimes(factors);
       baseSimpl = `${a}${x}`;
     } else if (sub === 2) {
-      // x * y
       const factors = shuffleFactors([x, y]);
       baseExpr = withTimes(factors);
       baseSimpl = `${x}${y}`;
     } else if (sub === 3) {
-      // x * y * z
       const factors = shuffleFactors([x, y, z]);
       baseExpr = withTimes(factors);
       baseSimpl = `${x}${y}${z}`;
     } else if (sub === 4) {
-      // 1 * x
       hasOne = true;
       const factors = shuffleFactors([`1`, x]);
       baseExpr = withTimes(factors);
       baseSimpl = `${x}`;
     } else if (sub === 5) {
-      // 1 * x * y
       hasOne = true;
       const factors = shuffleFactors([`1`, x, y]);
       baseExpr = withTimes(factors);
       baseSimpl = `${x}${y}`;
     } else {
-      // 1 * x * y * z
       hasOne = true;
       const factors = shuffleFactors([`1`, x, y, z]);
       baseExpr = withTimes(factors);
@@ -3616,14 +3605,12 @@ G[93] = () => {
   }
 
   else if (level === 2) {
-    const sub = pick([1, 2]);
+    const sub = pick([1,1,2]);
     if (sub === 1) {
-      // x * y * a
       const factors = shuffleFactors([x, y, `${a}`]);
       baseExpr = withTimes(factors);
       baseSimpl = `${a}${x}${y}`;
     } else {
-      // x * y * z * a
       const factors = shuffleFactors([x, y, z, `${a}`]);
       baseExpr = withTimes(factors);
       baseSimpl = `${a}${x}${y}${z}`;
@@ -3632,19 +3619,16 @@ G[93] = () => {
 
   else if (level === 3) {
     const ab = a * b;
-    const sub = pick([1, 2, 3]);
+    const sub = pick([1,1,2,3]);
     if (sub === 1) {
-      // a * b * x
       const factors = shuffleFactors([`${a}`, `${b}`, x]);
       baseExpr = withTimes(factors);
       baseSimpl = `${ab}${x}`;
     } else if (sub === 2) {
-      // a * b * x * y
       const factors = shuffleFactors([`${a}`, `${b}`, x, y]);
       baseExpr = withTimes(factors);
       baseSimpl = `${ab}${x}${y}`;
     } else {
-      // a * b * x * y * z
       const factors = shuffleFactors([`${a}`, `${b}`, x, y, z]);
       baseExpr = withTimes(factors);
       baseSimpl = `${ab}${x}${y}${z}`;
@@ -3653,29 +3637,22 @@ G[93] = () => {
 
   else if (level === 4) {
     hasPow = true;
-    const sub = pick([1, 2, 3, 4, 5]);
+    const sub = pick([1,1,2,3,3,4,5]);
     if (sub === 1) {
-      // x * x
-      const factors = [x, x];
-      baseExpr = withTimes(factors);
+      baseExpr = withTimes([x, x]);
       baseSimpl = `${x}^2`;
     } else if (sub === 2) {
-      // x * x * x
-      const factors = [x, x, x];
-      baseExpr = withTimes(factors);
+      baseExpr = withTimes([x, x, x]);
       baseSimpl = `${x}^3`;
     } else if (sub === 3) {
-      // x * x * y
       const factors = shuffleFactors([x, x, y]);
       baseExpr = withTimes(factors);
       baseSimpl = `${x}^2${y}`;
     } else if (sub === 4) {
-      // x * x * y * y
       const factors = shuffleFactors([x, x, y, y]);
       baseExpr = withTimes(factors);
       baseSimpl = `${x}^2${y}^2`;
     } else {
-      // x * x * y * z
       const factors = shuffleFactors([x, x, y, z]);
       baseExpr = withTimes(factors);
       baseSimpl = `${x}^2${y}${z}`;
@@ -3685,24 +3662,20 @@ G[93] = () => {
   else if (level === 5) {
     hasPow = true;
     const ab = a * b;
-    const sub = pick([1, 2, 3, 4]);
+    const sub = pick([1,1,2,3,4]);
     if (sub === 1) {
-      // a * x * x
       const factors = shuffleFactors([`${a}`, x, x]);
       baseExpr = withTimes(factors);
       baseSimpl = `${a}${x}^2`;
     } else if (sub === 2) {
-      // a * x * x * y
       const factors = shuffleFactors([`${a}`, x, x, y]);
       baseExpr = withTimes(factors);
       baseSimpl = `${a}${x}^2${y}`;
     } else if (sub === 3) {
-      // a * b * x * x
       const factors = shuffleFactors([`${a}`, `${b}`, x, x]);
       baseExpr = withTimes(factors);
       baseSimpl = `${ab}${x}^2`;
     } else {
-      // a * b * x * x * y
       const factors = shuffleFactors([`${a}`, `${b}`, x, x, y]);
       baseExpr = withTimes(factors);
       baseSimpl = `${ab}${x}^2${y}`;
@@ -3711,34 +3684,28 @@ G[93] = () => {
 
   else if (level === 6) {
     hasOne = true;
-    const sub = pick([1, 2, 3, 4, 5, 6]);
+    const sub = pick([1,1,2,2,3,4,5,6]);
     if (sub === 1) {
-      // 1 * (a ± x)
       const factors = shuffleFactors([`1`, `(${a} ${pm} ${x})`]);
       baseExpr = withTimes(factors);
       baseSimpl = `${a} ${pm} ${x}`;
     } else if (sub === 2) {
-      // 1 * (x ± a)
       const factors = shuffleFactors([`1`, `(${x} ${pm} ${a})`]);
       baseExpr = withTimes(factors);
       baseSimpl = `${x} ${pm} ${a}`;
     } else if (sub === 3) {
-      // 1 * (x ± y)
       const factors = shuffleFactors([`1`, `(${x} ${pm} ${y})`]);
       baseExpr = withTimes(factors);
       baseSimpl = `${x} ${pm} ${y}`;
     } else if (sub === 4) {
-      // 1 * x * (a ± y)
       const factors = shuffleFactors([`1`, x, `(${a} ${pm} ${y})`]);
       baseExpr = withTimes(factors);
       baseSimpl = `${x}(${a} ${pm} ${y})`;
     } else if (sub === 5) {
-      // 1 * x * (y ± a)
       const factors = shuffleFactors([`1`, x, `(${y} ${pm} ${a})`]);
       baseExpr = withTimes(factors);
       baseSimpl = `${x}(${y} ${pm} ${a})`;
     } else {
-      // 1 * x * (y ± z)
       const factors = shuffleFactors([`1`, x, `(${y} ${pm} ${z})`]);
       baseExpr = withTimes(factors);
       baseSimpl = `${x}(${y} ${pm} ${z})`;
@@ -3746,34 +3713,28 @@ G[93] = () => {
   }
 
   else { // level === 7
-    const sub = pick([1, 2, 3, 4, 5, 6]);
+    const sub = pick([1,1,2,2,3,4,5,6]);
     if (sub === 1) {
-      // a * (b ± x)
       const factors = shuffleFactors([`${a}`, `(${b} ${pm} ${x})`]);
       baseExpr = withTimes(factors);
       baseSimpl = `${a}(${b} ${pm} ${x})`;
     } else if (sub === 2) {
-      // a * (x ± b)
       const factors = shuffleFactors([`${a}`, `(${x} ${pm} ${b})`]);
       baseExpr = withTimes(factors);
       baseSimpl = `${a}(${x} ${pm} ${b})`;
     } else if (sub === 3) {
-      // a * (x ± y)
       const factors = shuffleFactors([`${a}`, `(${x} ${pm} ${y})`]);
       baseExpr = withTimes(factors);
       baseSimpl = `${a}(${x} ${pm} ${y})`;
     } else if (sub === 4) {
-      // a * x * (b ± y)
       const factors = shuffleFactors([`${a}`, x, `(${b} ${pm} ${y})`]);
       baseExpr = withTimes(factors);
       baseSimpl = `${a}${x}(${b} ${pm} ${y})`;
     } else if (sub === 5) {
-      // a * x * (y ± b)
       const factors = shuffleFactors([`${a}`, x, `(${y} ${pm} ${b})`]);
       baseExpr = withTimes(factors);
       baseSimpl = `${a}${x}(${y} ${pm} ${b})`;
     } else {
-      // a * x * (y ± z)
       const factors = shuffleFactors([`${a}`, x, `(${y} ${pm} ${z})`]);
       baseExpr = withTimes(factors);
       baseSimpl = `${a}${x}(${y} ${pm} ${z})`;
@@ -3782,18 +3743,25 @@ G[93] = () => {
 
   const { expr: finalExpr, simplified: finalSimpl } = wrapExtra(baseExpr, baseSimpl);
 
-  // Règles
+  const ruleNum = (n) => hasOne && hasPow ? (n <= 2 ? n : n) : n;
+
   const rules = [
-    `Règle 1 : On ne met pas le signe $\\times$ devant une lettre ou une parenthèse.`,
-    `Règle 2 : On écrit d'abord les nombres, puis les lettres (par ordre alphabétique).`,
+    `**Règle 1 :** On ne met pas le signe $\\times$ devant une lettre ou une parenthèse.`,
+    `**Règle 2 :** On écrit d'abord les nombres, puis les lettres (par ordre alphabétique).`,
   ];
-  if (hasOne) rules.push(`Règle 3 : On n'écrit pas le coefficient $1$ devant une lettre.`);
-  if (hasPow) rules.push(`Règle ${hasOne ? 4 : 3} : On utilise la notation exposant si on multiplie plusieurs fois la même lettre entre elle.`);
+  let nextRule = 3;
+  if (hasOne) {
+    rules.push(`**Règle ${nextRule} :** On n'écrit pas le coefficient $1$ devant une lettre.`);
+    nextRule++;
+  }
+  if (hasPow) {
+    rules.push(`**Règle ${nextRule} :** On utilise la notation exposant si on multiplie plusieurs fois la même lettre entre elle.`);
+  }
 
   return {
     question: `Simplifier l'expression :\n\n$$${finalExpr}$$`,
     correction:
-      `Règles d'écriture :\n\n${rules.map(r => `- ${r}`).join('\n')}\n\n$$${finalExpr} = ${finalSimpl}$$`
+      `**Règles d'écriture :**\n\n${rules.map(r => `- ${r}`).join('\n')}\n\n$$${finalExpr} = ${finalSimpl}$$`
   };
 };
 
