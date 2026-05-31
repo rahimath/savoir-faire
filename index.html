@@ -5135,6 +5135,109 @@ G[114] = () => {
   return buildResult();
 };
 
+G[121] = () => {
+  const type = pick([1, 2, 3, 4]);
+
+  const fmtV = x => Number.isInteger(x) ? `${x}` : `${x.toFixed(1).replace('.', '{,}')}`;
+  const genVal = (min, max) => {
+    const v = Math.round(rand(min * 10, max * 10)) / 10;
+    return v;
+  };
+
+  const aligned = lines =>
+    `$$\\begin{aligned}\n${lines.map((l, i) => `  P &${i === 0 ? '=' : '='} ${l}`).join(' \\\\[3pt]\n')}\n\\end{aligned}$$`;
+
+  if (type === 1) {
+    const c = genVal(2.1, 14.9);
+    const res = Math.round(4 * c * 10) / 10;
+    return {
+      question: `Calculer le périmètre d'un carré de côté $${fmtV(c)}\\,\\text{cm}$.`,
+      correction: `$$\\begin{aligned}\n  P &= 4 \\times c \\\\[3pt]\n  &= 4 \\times ${fmtV(c)} \\\\[3pt]\n  &= ${fmtV(res)}\\,\\text{cm}\n\\end{aligned}$$`
+    };
+  }
+
+  if (type === 2) {
+    let l, L;
+    do { l = genVal(2.1, 14.9); L = genVal(2.1, 14.9); } while (l === L);
+    const res = Math.round((2 * l + 2 * L) * 10) / 10;
+    return {
+      question: `Calculer le périmètre d'un rectangle de longueur $${fmtV(l)}\\,\\text{cm}$ et de largeur $${fmtV(L)}\\,\\text{cm}$.`,
+      correction: `$$\\begin{aligned}\n  P &= 2 \\times l + 2 \\times L \\\\[3pt]\n  &= 2 \\times ${fmtV(l)} + 2 \\times ${fmtV(L)} \\\\[3pt]\n  &= ${fmtV(2*l)} + ${fmtV(2*L)} \\\\[3pt]\n  &= ${fmtV(res)}\\,\\text{cm}\n\\end{aligned}$$`
+    };
+  }
+
+  if (type === 3) {
+    const c = genVal(2.1, 14.9);
+    const res = Math.round(3 * c * 10) / 10;
+    return {
+      question: `Calculer le périmètre d'un triangle équilatéral de côté $${fmtV(c)}\\,\\text{cm}$.`,
+      correction: `$$\\begin{aligned}\n  P &= 3 \\times c \\\\[3pt]\n  &= 3 \\times ${fmtV(c)} \\\\[3pt]\n  &= ${fmtV(res)}\\,\\text{cm}\n\\end{aligned}$$`
+    };
+  }
+
+  // type 4 : cercle
+  const r = genVal(2.1, 9.9);
+  const res = 2 * Math.PI * r;
+  const resStr = res.toFixed(2).replace('.', '{,}');
+  return {
+    question: `Calculer le périmètre d'un cercle de rayon $${fmtV(r)}\\,\\text{cm}$.`,
+    correction: `$$\\begin{aligned}\n  P &= 2 \\times \\pi \\times r \\\\[3pt]\n  &= 2 \\times \\pi \\times ${fmtV(r)} \\\\[3pt]\n  &\\approx ${resStr}\\,\\text{cm}\n\\end{aligned}$$`
+  };
+};
+
+G[122] = () => {
+  const type = pick([1, 2, 3, 4]);
+
+  const fmtV = x => Number.isInteger(x) ? `${x}` : `${x.toFixed(1).replace('.', '{,}')}`;
+  const genVal = (min, max) => Math.round(rand(min * 10, max * 10)) / 10;
+
+  if (type === 1) {
+    const c = genVal(2.1, 14.9);
+    const res = Math.round(c * c * 100) / 100;
+    const resStr = Number.isInteger(res) ? `${res}` : `${res.toFixed(2).replace('.', '{,}')}`;
+    return {
+      question: `Calculer l'aire d'un carré de côté $${fmtV(c)}\\,\\text{cm}$.`,
+      correction: `$$\\begin{aligned}\n  A &= c \\times c \\\\[3pt]\n  &= ${fmtV(c)} \\times ${fmtV(c)} \\\\[3pt]\n  &= ${resStr}\\,\\text{cm}^2\n\\end{aligned}$$`
+    };
+  }
+
+  if (type === 2) {
+    let l, L;
+    do { l = genVal(2.1, 14.9); L = genVal(2.1, 14.9); } while (l === L);
+    const res = Math.round(l * L * 100) / 100;
+    const resStr = Number.isInteger(res) ? `${res}` : `${res.toFixed(2).replace('.', '{,}')}`;
+    return {
+      question: `Calculer l'aire d'un rectangle de longueur $${fmtV(l)}\\,\\text{cm}$ et de largeur $${fmtV(L)}\\,\\text{cm}$.`,
+      correction: `$$\\begin{aligned}\n  A &= l \\times L \\\\[3pt]\n  &= ${fmtV(l)} \\times ${fmtV(L)} \\\\[3pt]\n  &= ${resStr}\\,\\text{cm}^2\n\\end{aligned}$$`
+    };
+  }
+
+  if (type === 3) {
+    let b, h;
+    do { b = genVal(2.1, 14.9); h = genVal(2.1, 14.9); } while (b === h);
+    const res = Math.round(b * h / 2 * 100) / 100;
+    const resStr = Number.isInteger(res) ? `${res}` : `${res.toFixed(2).replace('.', '{,}')}`;
+    return {
+      question: `Calculer l'aire d'un triangle de base $${fmtV(b)}\\,\\text{cm}$ et de hauteur $${fmtV(h)}\\,\\text{cm}$.`,
+      correction: `$$\\begin{aligned}\n  A &= \\dfrac{b \\times h}{2} \\\\[3pt]\n  &= \\dfrac{${fmtV(b)} \\times ${fmtV(h)}}{2} \\\\[3pt]\n  &= \\dfrac{${fmtV(Math.round(b*h*100)/100)}}{2} \\\\[3pt]\n  &= ${resStr}\\,\\text{cm}^2\n\\end{aligned}$$`
+    };
+  }
+
+  // type 4 : disque
+  const r = genVal(2.1, 9.9);
+  const res = Math.PI * r * r;
+  const resStr = res.toFixed(2).replace('.', '{,}');
+  return {
+    question: `Calculer l'aire d'un disque de rayon $${fmtV(r)}\\,\\text{cm}$.`,
+    correction: `$$\\begin{aligned}\n  A &= \\pi \\times r \\times r \\\\[3pt]\n  &= \\pi \\times ${fmtV(r)} \\times ${fmtV(r)} \\\\[3pt]\n  &\\approx ${resStr}\\,\\text{cm}^2\n\\end{aligned}$$`
+  };
+};
+
+G[123] = () => ({
+  question: `En cours de construction...`,
+  correction: ``
+});
+
 // ── DATA ──────────────────────────────────────────────────────────────────────
 const CHAPTERS = [
   {num:1,title:"Règles de calcul",skills:[[11,"Effectuer un calcul sans parenthèses et sans priorité"],[12,"Effectuer un calcul sans parenthèses et avec priorité"],[13,"Effectuer un calcul avec parenthèses"],[14,"Effectuer un calcul avec parenthèses doubles"],[15,"Traduire un calcul avec le vocabulaire des opérations"],[16,"Identifier le type d'expression d'un calcul"]]},
@@ -5148,6 +5251,7 @@ const CHAPTERS = [
   {num:9,title:"Calcul littéral",skills:[[91,"Identifier une expression littérale"],[92,"Produire une expression littérale"],[93,"Simplifier une expression littérale"],[94,"Réduire une expression littérale"],[95,"Substituer des valeurs"],[96,"Tester une égalité"]]},
   {num:10,title:"Symétries",skills:[[101,"Construire le symétrique d’une figure par symétrie axiale"],[102,"Construire le symétrique d’une figure par symétrie centrale"],[103,"Identifier des axes de symétrie"],[104,"Identifier un centre de symétrie"]]},
   {num:11,title:"Proportionnalité II",skills:[[111,"Calculer une mesure à partir d’une échelle"],[112,"Déterminer une échelle"],[113,"Appliquer un pourcentage"],[114,"Calculer un pourcentage"]]},
+  {num:12,title:"Périmètres, aires et volumes",skills:[[121,"Calculer le périmètre d'une figure"],[122,"Calculer l'aire d'une figure"],[123,"Calculer le volume d'une figure"]]},
 ];
 const ALL_SKILLS = CHAPTERS.flatMap(ch=>ch.skills.map(([code,name])=>({code,name})));
 
